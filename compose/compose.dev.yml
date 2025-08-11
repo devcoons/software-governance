@@ -1,0 +1,68 @@
+name: software-gov
+
+services:
+  db:
+    build:
+      context: ../software-governance.db
+      dockerfile: Dockerfile
+    image: software-gov/db:latest
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_root_password
+      - db_password
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL","mysqladmin ping -h localhost -u root -p$$(cat /run/secrets/db_root_password) --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    build:
+      context: ../software-governance.redis
+      dockerfile: Dockerfile
+    image: software-gov/redis:latest
+    command: ["sh","-c","redis-server --requirepass \"$$(cat /run/secrets/redis_password)\" --appendonly yes"]
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL","redis-cli -a \"$$(cat /run/secrets/redis_password)\" PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  phpmyadmin:
+    build:
+      context: ../software-governance.db-adm
+      dockerfile: Dockerfile
+    image: software-gov/db-adm:latest
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD_FILE: /run/secrets/db_password
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    secrets:
+      - db_password
+
+secrets:
+  db_root_password:
+    file: ./secrets/mariadb_root_password.txt
+  db_password:
+    file: ./secrets/mariadb_app_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+
+volumes:
+  db_data:
+  redis_data:

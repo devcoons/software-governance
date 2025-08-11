@@ -1,0 +1,26 @@
+compose/secrets/*
+
+# ------------------------
+# Docker
+# ------------------------
+# Volumes & build artifacts
+docker-data/
+.docker/
+**/tmp/
+**/temp/
+**/cache/
+**/logs/
+*.pid
+
+# ------------------------
+# Node.js
+# ------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnp
+.pnp.js
