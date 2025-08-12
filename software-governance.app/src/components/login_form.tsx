@@ -27,8 +27,8 @@ export default function LoginForm() {
     return () => { cancelled = true; };
   }, [router]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();                 // ← prevent native POST
     setError(null);
     if (!email || !password) { setError('Enter email and password.'); return; }
     setPending(true);
@@ -37,18 +37,15 @@ export default function LoginForm() {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, next }),  // pass next (server will sanitize)
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        
+      if (!res.ok || !data?.ok) {
         setError(data?.error || 'Login failed.');
         setPending(false);
         return;
       }
-
-         window.location.replace(data.redirect || '/dashboard');// or window.location.href = next
-      return;
+      window.location.replace(data.redirect || '/dashboard');  // server chooses force-change or next
     } catch {
       setError('Network error. Try again.');
       setPending(false);
@@ -63,7 +60,7 @@ export default function LoginForm() {
       </div>
 
       <div className="rounded-2xl border border-gray-200 shadow-sm">
-        <form onSubmit={onSubmit} className="p-6">
+        <form onSubmit={onSubmit} className="p-6" noValidate>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-800">Email</label>
@@ -105,9 +102,7 @@ export default function LoginForm() {
               <a href={`/forgot-password?next=${encodeURIComponent(next)}`} className="link link-primary">
                 Forgot password?
               </a>
-              <a href={`/register?next=${encodeURIComponent(next)}`} className="link">
-                Create account
-              </a>
+             
             </div>
           </div>
         </form>

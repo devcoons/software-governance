@@ -23,11 +23,20 @@ export async function hashPassword(plain: string): Promise<string> {
     memoryCost: ARGON2_MEMORY_KIB,
     timeCost: ARGON2_TIME_COST,
     parallelism: ARGON2_PARALLELISM,
-    hashLength: ARGON2_HASH_LEN,
-    saltLength: ARGON2_SALT_LEN,
+    outputLen: ARGON2_HASH_LEN,
+    salt: crypto.getRandomValues(new Uint8Array(ARGON2_SALT_LEN)),
   });
 }
 
 export async function verifyPassword(hashStr: string, plain: string): Promise<boolean> {
   try { return await verify(hashStr, plain); } catch { return false; }
+}
+
+export function generateTempPassword(len = 14) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  let out = '';
+  for (let i = 0; i < len; i++) out += alphabet[arr[i] % alphabet.length];
+  return out;
 }

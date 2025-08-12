@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = sess.claims.sub;
+  const userId = sess.claims.userId;
 
   // rate limit: 6 verify attempts / 5 minutes per user
   const rl = await rateLimit(`totp:verify:${userId}`, 6, 300);

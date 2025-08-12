@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '@/lib/cookies';
 import { sessionStore } from '@/lib/sstore.node';
+import { setForcePwdCookie } from '@/lib/cookies';
 
 function withTimeout<T>(p: Promise<T>, ms: number) {
   return Promise.race([
@@ -19,16 +20,27 @@ async function revokeSafely(sessionId?: string, refreshId?: string) {
 
 export const runtime = 'nodejs';
 
+function safePath(p?: string | null) {
+  if (!p) return '/login';
+  if (!p.startsWith('/') || p.startsWith('//')) return '/login';
+  return p;
+}
+
 export async function POST(_req: NextRequest) {
   const jar = await cookies();
   const sid = jar.get(SESSION_COOKIE)?.value;
   const rid = jar.get(REFRESH_COOKIE)?.value;
 
   // clear cookies immediately so the client is logged out even if Redis is slow
-  const res = NextResponse.redirect(new URL('/login', _req.url));
-  clearAuthCookies(res);
+ const url = new URL(_req.url);
+ const next = safePath(url.searchParams.get('next'));
 
-  // revoke in the background; do not block the response
+  // Clear cookies immediately; avoid method replay with 303
+  const res = NextResponse.redirect(new URL(next, url.origin), 303);
+  clearAuthCookies(res);
+  setForcePwdCookie(res, false);
+
+  // Best-effort revoke in background
   revokeSafely(sid, rid).catch(() => {});
 
   return res;

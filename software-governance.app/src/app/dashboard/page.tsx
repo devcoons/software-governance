@@ -20,13 +20,13 @@ export default async function DashboardPage() {
   return (
      <Chrome>
       <div className="max-w-screen-xl mx-auto px-4 lg:px-16 py-6">
-    <div className="max-w-3xl">
+      <div className="max-w-3xl">
         <h1 className="text-2xl font-semibold mb-2">Dashboard</h1>
         <p className="text-sm text-gray-600 mb-6">Welcome, {claims.email}</p>
 
         <div className="rounded-2xl border border-gray-200 p-4">
           <div className="text-sm">
-            <div><span className="font-medium">User ID:</span> {claims.sub}</div>
+            <div><span className="font-medium">User ID:</span> {claims.userId}</div>
             <div className="mt-1"><span className="font-medium">Roles:</span> {claims.roles?.join(', ') || '(none)'}</div>
             <div className="mt-1"><span className="font-medium">Permissions:</span> {claims.permissions?.join(', ') || '(none)'}</div>
             {claims.forcePasswordChange ? (

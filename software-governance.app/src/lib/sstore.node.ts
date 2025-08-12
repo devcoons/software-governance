@@ -8,7 +8,7 @@ import {
 } from '@/auth.config';
 
 export type Claims = {
-  sub: string;
+  userId: string;
   email: string;
   roles: string[];
   permissions: string[];
@@ -72,7 +72,7 @@ export const sessionStore = {
 
     await Promise.all([
       redis.set(SESSION_PREFIX + id, JSON.stringify(rec), 'EX', SESSION_TTL_SECONDS),
-      redis.sadd(USER_SESSIONS_PREFIX + claims.sub, id),
+      redis.sadd(USER_SESSIONS_PREFIX + claims.userId, id),
     ]);
 
     return id;
@@ -112,7 +112,7 @@ async getSession(id: string): Promise<SessionRec | null> {
     const raw = await redis.get(key);
     if (raw) {
       const rec = JSON.parse(raw) as SessionRec;
-      await redis.srem(USER_SESSIONS_PREFIX + rec.claims.sub, id);
+      await redis.srem(USER_SESSIONS_PREFIX + rec.claims.userId, id);
     }
     await redis.del(key);
   },
@@ -126,7 +126,7 @@ async getSession(id: string): Promise<SessionRec | null> {
 
     await Promise.all([
       redis.set(REFRESH_PREFIX + id, JSON.stringify(rec), 'EX', REFRESH_TTL_SECONDS),
-      redis.sadd(USER_REFRESH_PREFIX + claims.sub, id),
+      redis.sadd(USER_REFRESH_PREFIX + claims.userId, id),
     ]);
 
     return id;
@@ -144,7 +144,7 @@ async getSession(id: string): Promise<SessionRec | null> {
     const raw = await redis.get(key);
     if (raw) {
       const rec = JSON.parse(raw) as RefreshRec;
-      await redis.srem(USER_REFRESH_PREFIX + rec.claims.sub, id);
+      await redis.srem(USER_REFRESH_PREFIX + rec.claims.userId, id);
     }
     await redis.del(key);
   },

@@ -4,18 +4,18 @@ import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECOND
 
 import { sessionStore } from '@/lib/sstore.node';
 import Chrome from '@/components/chrome';
-import TotpSetupCard from '@/app/users/me/TotpSetupCard';
-import ChangePasswordCard from '@/app/users/me/ChangePasswordCard';
+import TotpSetupCard from '@/app/me/TotpSetupCard';
+import ChangePasswordCard from '@/app/me/ChangePasswordCard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   const sid = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!sid) redirect('/auth/refresh?next=' + encodeURIComponent('/users/me'));
+  if (!sid) redirect('/auth/refresh?next=' + encodeURIComponent('/me'));
 
   const sess = await sessionStore.getSession(sid);
-  if (!sess) redirect('/auth/refresh?next=' + encodeURIComponent('/users/me'));
+  if (!sess) redirect('/auth/refresh?next=' + encodeURIComponent('/me'));
 
   const { claims } = sess;
   const totpEnabled = (claims as any).totp_enabled ?? false;
@@ -32,7 +32,7 @@ export default async function ProfilePage() {
       <h2 className="card-title">Account Details</h2>
       <p className="text-sm opacity-70 mb-4">Welcome, {claims.email}</p>
       <ul className="text-sm space-y-2">
-        <li><span className="font-medium">User ID:</span> {claims.sub}</li>
+        <li><span className="font-medium">User ID:</span> {claims.userId}</li>
         <li><span className="font-medium">Roles:</span> {claims.roles?.join(', ') || '(none)'}</li>
         <li><span className="font-medium">Permissions:</span> {claims.permissions?.join(', ') || '(none)'}</li>
       </ul>

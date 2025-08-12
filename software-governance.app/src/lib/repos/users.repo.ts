@@ -23,6 +23,15 @@ export type User = {
   forcePasswordChange: boolean;
 };
 
+export type UserListItem = {
+  id: string;
+  email: string;
+  roles: string[];
+  totpEnabled: boolean;
+  forcePasswordChange: boolean;
+  createdAt: string;
+};
+
 function mapRow(r: UserRow): User {
   return {
     id: binToUuid(r.id),
@@ -33,6 +42,35 @@ function mapRow(r: UserRow): User {
     totpEnabled: !!r.totp_enabled,
     forcePasswordChange: !!r.force_password_change,
   };
+}
+
+export async function listAllUsers(): Promise<UserListItem[]> {
+  const rows = await query<any[]>(
+    `SELECT id,email,roles,totp_enabled,force_password_change,created_at
+       FROM users ORDER BY created_at DESC`
+  );
+  return rows.map(r => ({
+    id: binToUuid(r.id),
+    email: r.email,
+    roles: r.roles ? JSON.parse(r.roles) : [],
+    totpEnabled: !!r.totp_enabled,
+    forcePasswordChange: !!r.force_password_change,
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+  }));
+}
+
+export async function updateRoles(userId: string, roles: string[]) {
+  await exec(
+    `UPDATE users SET roles = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [JSON.stringify(roles), uuidToBin(userId)]
+  );
+}
+
+/**
+ * Convenience: set a single primary role (we store roles as an array).
+ */
+export async function setRole(userId: string, role: 'admin' | 'user' | 'viewer') {
+  await updateRoles(userId, [role]);
 }
 
 export async function getByEmail(email: string): Promise<User | null> {
@@ -64,7 +102,7 @@ export async function create(
   const { idStr, idBin } = newUuidBin();
   await exec(
     `INSERT INTO users (id,email,password,roles,permissions,totp_enabled,force_password_change)
-     VALUES (?,?,?,?,?,0,0)`,
+     VALUES (?,?,?,?,?,0,1)`,
     [idBin, email.toLowerCase().trim(), passwordHash, JSON.stringify(roles), JSON.stringify(permissions)],
   );
   return idStr;
@@ -114,4 +152,12 @@ export async function updatePasswordAndClearForce(userId: string, newHash: strin
     [newHash, uuidToBin(userId)],
   );
   return (res as any).affectedRows as number;
+}
+
+/**
+ * Delete a user account by id.
+ * NOTE: if your DB has FKs (sessions, totp secrets, etc.), handle cascading in SQL or here.
+ */
+export async function deleteUser(userId: string) {
+  await exec(`DELETE FROM users WHERE id = ?`, [uuidToBin(userId)]);
 }

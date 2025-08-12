@@ -79,19 +79,4 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ============================
--- NOTES
--- ============================
--- 1) Only these three tables are required for the planned system:
---    - users: credentials, flags, RBAC fields
---    - user_totp: TOTP secret per user
---    - audit_log: security/audit trail
---    Sessions, refresh tokens, and rate limits live in Redis.
---
--- 2) Application must handle UUID <-> BINARY(16):
---    - On INSERT/SELECT, convert between string UUID and 16-byte Buffer/Uint8Array.
---    - (If you ever switch to MySQL 8+, UUID_TO_BIN/BIN_TO_UUID exist, but in MariaDB
---      you should do conversion in the app layer for portability.)
---
--- 3) JSON columns in MariaDB are LONGTEXT with JSON_VALID() checks.
---    On older MariaDB, CHECK is parsed but not enforced; it's fine to keep it.
+

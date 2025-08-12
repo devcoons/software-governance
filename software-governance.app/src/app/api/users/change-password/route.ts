@@ -5,16 +5,10 @@ import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECOND
 import { sessionStore } from '@/lib/sstore.node';
 import { getById, updatePasswordAndClearForce } from '@/lib/repos/users.repo';
 import { audit } from '@/lib/repos/audit.repo';
-import { verifyPassword, hashPassword } from '@/lib/crypto';
+import { verifyPassword, hashPassword, validatePasswordStrength } from '@/lib/crypto';
 import { rateLimit } from '@/lib/rate';
 
 export const runtime = 'nodejs';
-
-
-function validateNewPassword(pw: string) {
-  // minimal: length >= 8; extend with entropy rules if you want
-  return typeof pw === 'string' && pw.length >= 8;
-}
 
 export async function POST(req: NextRequest) {
   // Rate-limit (per-session): 5 attempts / 5 minutes
@@ -24,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   const session = await sessionStore.getSession(sid);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const userId = session.claims.sub;
+  const userId = session.claims.userId;
 
   const rl = await rateLimit(`pwchange:${userId}`, 5, 300);
   if (!rl.allowed) return NextResponse.json({ error: 'Too many attempts, try later.' }, { status: 429 });
@@ -35,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!currentPassword || !newPassword) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
-  if (!validateNewPassword(newPassword)) {
+  if (!validatePasswordStrength(newPassword)) {
     return NextResponse.json({ error: 'Password too weak (min 8 chars).' }, { status: 400 });
   }
 

@@ -1,31 +1,34 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
-
-import { sessionStore } from '@/lib/sstore.node';
+// app/users/page.tsx (or the route you showed)
 import Chrome from '@/components/chrome';
+import Link from 'next/link';
+import { listAllUsers } from '@/lib/repos/users.repo';
+import { requireUsersViewerBlocked } from '@/lib/authz';
+import UsersTable from '@/app/users/_client/UsersTable'; // NEW
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
-export default async function CompliancePage() {
-  const sid = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!sid) redirect('/auth/refresh?next=' + encodeURIComponent('/dashboard'));
+export default async function UsersOverviewPage() {
+  const auth = await requireUsersViewerBlocked();
+  if (!auth.ok) {
+    return (
+      <main className="p-8">
+        <h1 className="text-xl font-semibold mb-2">Access denied</h1>
+        <p className="opacity-70">You don’t have access to Users.</p>
+      </main>
+    );
+  }
 
-  const sess = await sessionStore.getSession(sid);
-  if (!sess) redirect('/auth/refresh?next=' + encodeURIComponent('/dashboard'));
-
-  const { claims } = sess;
+  const isAdmin = (auth.claims.roles || []).includes('admin');
+  const users = await listAllUsers(); // return [{ id, email, roles, totpEnabled, forcePasswordChange, createdAt }, ...]
 
   return (
-     <Chrome>
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-16 py-6">
-    <div className="max-w-3xl">
-       
-        <p className="text-sm text-gray-600 mb-6">Users</p>
-
+    <Chrome>
+      <div className="max-w-screen-xl mx-auto px-4 lg:px-16 py-8">
+        <h1 className="text-2xl font-bold mb-6">Users</h1>
+        <div className="card bg-base-100 shadow-md border border-base-300">
+          <UsersTable users={users} isAdmin={isAdmin} />
+        </div>
       </div>
-      </div>
-      </Chrome>
+    </Chrome>
   );
 }

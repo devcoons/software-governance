@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!sid) return bad('Not authenticated', 401);
   const sess = await sessionStore.getSession(sid).catch(() => null);
   if (!sess?.claims?.sub) return bad('Session expired', 401);
-  const userId = sess.claims.sub;
+  const userId = sess.claims.userId;
 
   // 3) Load user & check that force flag is on (defensive)
   const user = await getById(userId);

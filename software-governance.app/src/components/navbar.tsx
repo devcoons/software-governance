@@ -1,97 +1,79 @@
-'use client';
-
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
+import type { Route } from 'next';
+import NavLinksClient from '@/components/navbar/NavLinks.client';
+import SubnavClient from '@/components/navbar/Subnav.client';
 
-type MenuItem = {
-  label: string;
-  href: string;
-  subpages?: { label: string; href: string }[];
-};
+import { getSessionClaims } from '@/lib/authz'; // server-only
 
-const menuItems: MenuItem[] = [
-  {
-    label: 'Dashboard',
-    href: '/dashboard',
-  },
+
+
+type Role = 'admin' | 'user' | 'viewer';
+type Subpage = { label: string; href: Route };
+type MenuItem = { label: string; href: Route; subpages?: Subpage[] };
+
+const BASE_ITEMS: MenuItem[] = [
+  { label: 'Dashboard', href: '/dashboard' },
   {
     label: 'Software Registry',
     href: '/registry',
     subpages: [
-      { label: 'Overview', href: '/registry' },
-      { label: 'New Entry', href: '/registry/new' },
+      { label: 'Overview',         href: '/registry' },
+      { label: 'New Entry',        href: '/registry/new' },
       { label: 'Pending Approval', href: '/registry/pending' },
     ],
   },
-  {
-    label: 'Approvals',
-    href: '/approvals',
-  },
-  {
-    label: 'Compliance',
-    href: '/compliance',
-  },
-  {
-    label: 'Audit Logs',
-    href: '/audit',
-  },
-  {
-    label: 'Users & Roles',
-    href: '/users',
-  },
-];
+  { label: 'Approvals',  href: '/approvals' },
+  { label: 'Compliance', href: '/compliance' },
+  { label: 'Audit Logs', href: '/audit' },
+] as const;
 
-async function onLogout() {
-  try { await fetch('/api/logout', { method: 'POST', cache: 'no-store' }); } catch {}
-  window.location.replace('/auth/login');
+// Prefer admin > user > viewer
+function pickEffectiveRole(roles: unknown): Role {
+  const arr = Array.isArray(roles) ? (roles as string[]) : [];
+  if (arr.includes('admin')) return 'admin';
+  if (arr.includes('user')) return 'user';
+  return 'viewer';
 }
 
-const isSection = (pathname: string, base: string, allowedSubs: string[] = []) => {
-  if (pathname === base) return true;
-  return allowedSubs.some(sub => pathname === `${base}/${sub}`);
-};
+export default async function NavBar() {
+  const claims = await getSessionClaims(); // server-side, from session cookie
+  const role: Role = pickEffectiveRole(claims?.roles);
 
-export default function NavBar() {
-  const pathname = usePathname() || '/';
-  const activeSection = menuItems.find((item) => isSection(pathname, item.href));
+  // Build top-level menu synchronously on the server (no flicker)
+  const withUsers: MenuItem[] =
+    role === 'viewer'
+      ? [...BASE_ITEMS]
+      : [...BASE_ITEMS, { label: 'Users & Roles', href: '/users' }];
+
+  // Role-based Users subnav (no client fetch)
+  const usersSubpages: Subpage[] =
+    role === 'admin'
+      ? [
+          { label: 'Overview',     href: '/users' },
+          { label: 'Register New', href: '/users/register' },
+        ]
+      : role === 'user'
+      ? [{ label: 'Overview', href: '/users' }]
+      : [];
 
   return (
     <div className="bg-base-100 shadow-sm">
       <div className="navbar max-w-screen-xl mx-auto px-4 lg:px-8">
-
         {/* LEFT */}
         <div className="navbar-start">
-          <Link href="/dashboard" className="btn btn-ghost text-xl">
+          <Link href={'/dashboard'} className="btn btn-ghost text-xl">
             Software Governance
           </Link>
         </div>
 
-        {/* CENTER - DESKTOP */}
+        {/* CENTER - DESKTOP: active highlighting handled in client helper only */}
         <div className="navbar-center hidden lg:flex gap-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={clsx(
-                'btn btn-sm',
-                isSection(pathname, item.href) ? 'btn-primary' : 'btn-ghost'
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          <NavLinksClient items={withUsers} />
         </div>
 
         {/* RIGHT */}
         <div className="navbar-end gap-3">
-          <Link
-            href="/users/me"
-            className={clsx(
-              'btn btn-sm btn-circle',
-              isSection(pathname, '/users/me') ? 'btn-primary' : ''
-            )}
-          >
+          <Link href={'/me'} className="btn btn-sm btn-circle" aria-label="My Account">
             ID
           </Link>
           <form action="/api/logout" method="post">
@@ -102,60 +84,21 @@ export default function NavBar() {
         </div>
       </div>
 
-{/* SECONDARY NAV (desktop only) */}
-<div className="bg-base-200 border-t border-base-300 hidden lg:block">
-  <div className="max-w-screen-xl mx-auto px-4 lg:px-8 flex justify-center gap-2 py-2">
-    {activeSection?.subpages?.length ? (
-      activeSection.subpages.map((sub) => (
-        <Link
-          key={sub.href}
-          href={sub.href}
-          className={clsx(
-            'px-3 py-1 rounded-full text-sm transition-colors',
-            pathname === sub.href
-              ? 'bg-primary text-primary-content font-semibold'
-              : 'hover:bg-base-300'
-          )}
-        >
-          {sub.label}
-        </Link>
-      ))
-    ) : (
-      <div className="h-[1.75rem]" /> 
-    )}
-  </div>
-</div>
-
+      {/* SECONDARY NAV (desktop only) */}
+      <div className="bg-base-200 border-t border-base-300 hidden lg:block">
+        <SubnavClient
+          items={withUsers}
+          usersSubpages={usersSubpages}
+        />
+      </div>
 
       {/* MOBILE DROPDOWN */}
       <div className="navbar lg:hidden border-t border-base-300 px-4">
         <details className="dropdown w-full">
           <summary className="btn btn-sm w-full">Menu</summary>
           <ul className="menu w-full bg-base-100 rounded-box mt-2">
-            {menuItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={isSection(pathname, item.href) ? 'link link-primary' : ''}
-                >
-                  {item.label}
-                </Link>
-                {isSection(pathname, item.href) && item.subpages && (
-                  <ul>
-                    {item.subpages.map((sub) => (
-                      <li key={sub.href}>
-                        <Link
-                          href={sub.href}
-                          className={pathname === sub.href ? 'link link-primary' : ''}
-                        >
-                          {sub.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+            {/* Reuse the same client-side active logic for mobile */}
+            <NavLinksClient items={withUsers} nestedUsersSubpages={usersSubpages} asList />
           </ul>
         </details>
       </div>
