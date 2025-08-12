@@ -42,6 +42,11 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+async function onLogout() {
+  try { await fetch('/api/logout', { method: 'POST', cache: 'no-store' }); } catch {}
+  window.location.replace('/auth/login');
+}
+
 const isSection = (pathname: string, base: string, allowedSubs: string[] = []) => {
   if (pathname === base) return true;
   return allowedSubs.some(sub => pathname === `${base}/${sub}`);

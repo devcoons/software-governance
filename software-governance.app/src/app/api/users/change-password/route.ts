@@ -3,11 +3,13 @@ import { cookies } from 'next/headers';
 import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
 
 import { sessionStore } from '@/lib/sstore.node';
-import { getById, updatePasswordAndClearForce, insertAudit } from '@/lib/repos/users.repo';
+import { getById, updatePasswordAndClearForce } from '@/lib/repos/users.repo';
+import { audit } from '@/lib/repos/audit.repo';
 import { verifyPassword, hashPassword } from '@/lib/crypto';
 import { rateLimit } from '@/lib/rate';
 
 export const runtime = 'nodejs';
+
 
 function validateNewPassword(pw: string) {
   // minimal: length >= 8; extend with entropy rules if you want
@@ -39,13 +41,13 @@ export async function POST(req: NextRequest) {
 
   const user = await getById(userId);
   if (!user) {
-    await insertAudit(userId, 'password_change_fail', { reason: 'user_not_found' });
+    await audit(userId, 'password_change_fail', { reason: 'user_not_found' });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const ok = await verifyPassword(user.password, currentPassword);
   if (!ok) {
-    await insertAudit(userId, 'password_change_fail', { reason: 'bad_current' });
+    await audit(userId, 'password_change_fail', { reason: 'bad_current' });
     return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
   }
   // prevent no-op password
@@ -57,11 +59,11 @@ export async function POST(req: NextRequest) {
   const newHash = await hashPassword(newPassword);
   const changed = await updatePasswordAndClearForce(userId, newHash);
   if (!changed) {
-    await insertAudit(userId, 'password_change_fail', { reason: 'update_failed' });
+    await audit(userId, 'password_change_fail', { reason: 'update_failed' });
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 
-  await insertAudit(userId, 'password_change_success', null);
+  await audit(userId, 'password_change_success', null);
 
   // Optional: revoke all other sessions for this user (keep current)
   // await sessionStore.revokeAllForUser(userId);

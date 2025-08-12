@@ -1,52 +1,83 @@
+// src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
+import { SESSION_COOKIE, FORCE_PWD_COOKIE } from '@/lib/cookies';
 
-const GUARDS: RegExp[] = [
-  /^\/dashboard/,
-  /^\/registry/,
-  /^\/approvals/,
-  /^\/compliance/,
-  /^\/audit/,
-  /^\/users(?!\/me)/, // users admin area; /users/me handled per-page
+const PUBLIC_ALWAYS: RegExp[] = [
+  /^\/api\/logout$/,
+  /^\/api\/health\/.*$/,
 ];
 
-async function isHealthy(req: NextRequest): Promise<boolean> {
-  try {
-    const url = new URL('/api/health/ready', req.url);
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 1200);
-    const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
-    clearTimeout(t);
-    if (!res.ok) return false;
-    const data = await res.json();
-    return !!data?.ok;
-  } catch {
-    return false;
-  }
-}
+const PUBLIC: RegExp[] = [
+  /^\/$/,                 // if your homepage is public; remove if not
+  /^\/login(?:\/|$)$/,    // <-- login must be public
+  /^\/auth\/refresh(?:\/|$)$/,
+  /^\/api\/login(?:\/|$)$/,
+  /^\/api\/session\/refresh(?:\/|$)$/,
+];
+
+const SESSION_GUARDED: RegExp[] = [
+  /^\/dashboard(?:\/|$)/,
+  /^\/registry(?:\/|$)/,
+  /^\/approvals(?:\/|$)/,
+  /^\/compliance(?:\/|$)/,
+  /^\/audit(?:\/|$)/,
+  /^\/users(?!\/me)(?:\/|$)/,
+  // Guarded APIs:
+  /^\/api\/users(?:\/|$)/,
+  /^\/api\/registry(?:\/|$)/,
+  /^\/api\/approvals(?:\/|$)/,
+  /^\/api\/audit(?:\/|$)/,
+];
+
+const FORCE_ALLOWED: RegExp[] = [
+  /^\/auth\/force-change(?:\/|$)$/,
+  /^\/api\/users\/force-password(?:\/|$)$/,
+  /^\/api\/logout(?:\/|$)$/,
+  /^\/_next\//,
+  /^\/public\//,
+];
+
+const matches = (list: RegExp[], p: string) => list.some((re) => re.test(p));
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  const healthy = await isHealthy(req);
-  if (!healthy) {
-    return NextResponse.redirect(new URL('/maintenance', req.url));
+  // 0) Bypass
+  if (matches(PUBLIC_ALWAYS, pathname)) return NextResponse.next();
+
+  // 1) Global force-password gate (cookie-only, no fetch)
+  const isForced = req.cookies.get(FORCE_PWD_COOKIE)?.value === '1';
+  if (isForced && !matches(FORCE_ALLOWED, pathname)) {
+    const url = req.nextUrl.clone();
+    if (url.pathname !== '/auth/force-change') {
+      url.pathname = '/auth/force-change';
+      url.search = ''; // avoid redirect chains
+    }
+    return NextResponse.redirect(url);
   }
 
-  const guard = GUARDS.find((re) => re.test(pathname));
-  if (!guard) return NextResponse.next();
+  // 2) Public pages/APIs
+  if (matches(PUBLIC, pathname)) return NextResponse.next();
 
-
-  const sid = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!sid) {
-    const next = encodeURIComponent(pathname + (search || ''));
-    return NextResponse.redirect(new URL(`/auth/refresh?next=${next}`, req.url));
+  // 3) Guarded pages/APIs require a session cookie (we don’t validate it here)
+  if (matches(SESSION_GUARDED, pathname)) {
+    const sid = req.cookies.get(SESSION_COOKIE)?.value;
+    if (!sid) {
+      const url = req.nextUrl.clone();
+      const next = encodeURIComponent(pathname + (search || ''));
+      url.pathname = '/auth/refresh';
+      url.search = `?next=${next}`;
+      return NextResponse.redirect(url);
+    }
   }
 
+  // 4) Everything else is public
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next|favicon.ico|maintenance|api/health).*)'],
+  matcher: [
+    // exclude static and health
+    '/((?!_next|static|favicon.ico|robots.txt|sitemap.xml|images|public|api/health).*)',
+  ],
 };
-

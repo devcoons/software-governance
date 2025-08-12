@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE } from '@/lib/cookies';
 import { sessionStore } from '@/lib/sstore.node';
-import { getById, insertAudit } from '@/lib/repos/users.repo';
+import { getById } from '@/lib/repos/users.repo';
+import { audit } from '@/lib/repos/audit.repo';
 import { getTotpByUser } from '@/lib/repos/totp.repo';
 import { authenticator } from '@/lib/totp';
 import { rateLimit } from '@/lib/rate';
@@ -48,22 +49,22 @@ export async function POST(req: NextRequest) {
   }
 
   if (!user.totpEnabled) {
-    await insertAudit(userId, 'totp_verify_fail', { reason: 'not_enabled' });
+    await audit(userId, 'totp_verify_fail', { reason: 'not_enabled' });
     return NextResponse.json({ ok: false, message: 'TOTP not enabled yet' }, { status: 400 });
   }
 
   const rec = await getTotpByUser(userId);
   if (!rec) {
-    await insertAudit(userId, 'totp_verify_fail', { reason: 'no_secret' });
+    await audit(userId, 'totp_verify_fail', { reason: 'no_secret' });
     return NextResponse.json({ ok: false, message: 'TOTP not enabled yet' }, { status: 400 });
   }
 
   const isValid = authenticator.verify({ token: code, secret: rec.secret_b32 });
   if (!isValid) {
-    await insertAudit(userId, 'totp_verify_fail', { reason: 'bad_token' });
+    await audit(userId, 'totp_verify_fail', { reason: 'bad_token' });
     return NextResponse.json({ ok: false, message: 'Invalid code' }, { status: 400 });
   }
 
-  await insertAudit(userId, 'totp_verify_success', null);
+  await audit(userId, 'totp_verify_success', null);
   return NextResponse.json({ ok: true, message: 'Verified' });
 }

@@ -24,6 +24,25 @@ CREATE TABLE IF NOT EXISTS users (
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_general_ci;
 
+
+-- =========================================================
+-- USER_PROFILE
+-- =========================================================
+CREATE TABLE IF NOT EXISTS user_profile (
+  user_id     BINARY(16)   NOT NULL PRIMARY KEY,             -- FK to users.id
+  first_name  VARCHAR(100) NULL,                        
+  last_name   VARCHAR(100) NULL,
+  phone_number VARCHAR(100) NULL,
+  timezone     VARCHAR(100) NULL,
+  CONSTRAINT fk_profile_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_general_ci;
+
+
 -- =========================================================
 -- USER_TOTP
 -- =========================================================

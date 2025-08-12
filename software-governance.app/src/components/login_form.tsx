@@ -1,4 +1,4 @@
-// src/app/components/login_form.tsx
+// src/components/login_form.tsx
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -39,14 +39,15 @@ export default function LoginForm() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        
         setError(data?.error || 'Login failed.');
         setPending(false);
         return;
       }
 
-        window.location.replace(next); // or window.location.href = next
+         window.location.replace(data.redirect || '/dashboard');// or window.location.href = next
       return;
     } catch {
       setError('Network error. Try again.');

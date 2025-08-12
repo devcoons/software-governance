@@ -1,21 +1,16 @@
 // src/lib/cookies.ts
-import { NextResponse } from 'next/server';
+import type { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-// Edge-safe constants (read from env without any Node-only deps)
-export const SESSION_COOKIE =
-  process.env.SESSION_COOKIE || 'sid';
-export const REFRESH_COOKIE =
-  process.env.REFRESH_COOKIE || 'rid';
+export const SESSION_COOKIE = process.env.SESSION_COOKIE || 'sid';
+export const REFRESH_COOKIE = process.env.REFRESH_COOKIE || 'rid';
+export const FORCE_PWD_COOKIE = 'fp';
 
-export const SESSION_TTL_SECONDS =
-  parseInt(process.env.SESSION_TTL_SECONDS || '3600', 10);        // 1h
-export const REFRESH_TTL_SECONDS =
-  parseInt(process.env.REFRESH_TTL_SECONDS || '2592000', 10);     // 30d
+export const SESSION_TTL_SECONDS = parseInt(process.env.SESSION_TTL_SECONDS || '3600', 10);
+export const REFRESH_TTL_SECONDS = parseInt(process.env.REFRESH_TTL_SECONDS || '2592000', 10);
 
 const isProd = process.env.NODE_ENV === 'production';
 
-// Set short-lived session cookie
 export function setSessionCookie(res: NextResponse, id: string) {
   res.cookies.set(SESSION_COOKIE, id, {
     httpOnly: true,
@@ -26,7 +21,6 @@ export function setSessionCookie(res: NextResponse, id: string) {
   });
 }
 
-// Set long-lived refresh cookie
 export function setRefreshCookie(res: NextResponse, id: string) {
   res.cookies.set(REFRESH_COOKIE, id, {
     httpOnly: true,
@@ -37,7 +31,6 @@ export function setRefreshCookie(res: NextResponse, id: string) {
   });
 }
 
-// Clear both cookies
 export function clearAuthCookies(res: NextResponse) {
   res.cookies.set(SESSION_COOKIE, '', {
     httpOnly: true,
@@ -55,7 +48,33 @@ export function clearAuthCookies(res: NextResponse) {
   });
 }
 
-// Convenience helper for handlers that don't have a NextResponse yet
-export async function readCookie(name: string) {
-  return (await cookies()).get(name)?.value || null;
+// ✅ Works in both Node and Edge runtimes
+export async function readCookie(name: string): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(name)?.value ?? null;
+}
+
+export async function readBoolCookie(name: string): Promise<boolean> {
+  const jar = await cookies();
+  return jar.get(name)?.value === '1';
+}
+
+export function setForcePwdCookie(res: NextResponse, on: boolean) {
+  if (on) {
+    res.cookies.set(FORCE_PWD_COOKIE, '1', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 3600,
+    });
+  } else {
+    res.cookies.set(FORCE_PWD_COOKIE, '', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
+  }
 }

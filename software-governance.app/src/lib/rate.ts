@@ -1,11 +1,11 @@
 import Redis from 'ioredis';
 import {
-  REDIS_HOST, REDIS_PORT,  REDIS_PASSWORD,
+  REDIS_HOST, REDIS_PORT,  REDIS_PASSWORD, REDIS_USERNAME,
 } from '@/auth.config';
 
 const redis = new Redis({
   host: REDIS_HOST, port: REDIS_PORT,
-  username:  'default',
+  username:  REDIS_USERNAME || 'default',
   password: REDIS_PASSWORD || undefined,
   lazyConnect: true, enableReadyCheck: true,
   maxRetriesPerRequest: null,

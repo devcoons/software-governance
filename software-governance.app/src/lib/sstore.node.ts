@@ -17,13 +17,15 @@ export type Claims = {
   forcePasswordChange?: boolean;
 };
 
-type SessionRec = { claims: Claims; createdAt: number; lastSeenAt: number };
-type RefreshRec = { claims: Claims; createdAt: number };
+export type SessionRec = { claims: Claims; createdAt: number; lastSeenAt: number };
+export type RefreshRec = { claims: Claims; createdAt: number };
+
+const LAST_SEEN_WRITE_INTERVAL = 60;
 
 const redis = new Redis({
   host: REDIS_HOST,
   port: REDIS_PORT,
-  username: REDIS_USERNAME || 'default',
+  username: REDIS_USERNAME || undefined,   
   password: REDIS_PASSWORD || undefined,
   lazyConnect: true,
   enableReadyCheck: true,
@@ -44,9 +46,9 @@ redis.on('ready', () => {
 });
 
 async function ensure() {
-  if (redis.status === 'end' || redis.status === 'close') {
-    try { await redis.connect(); } catch {}
-  }
+  const s = redis.status; // 'wait' | 'connecting' | 'ready' | 'reconnecting' | 'end' | 'close'
+  if (s === 'ready' || s === 'connecting' || s === 'reconnecting') return;
+  try { await redis.connect(); } catch {/* swallow; caller may retry */}
 }
 
 
@@ -76,23 +78,23 @@ export const sessionStore = {
     return id;
   },
 
-  async getSession(id: string): Promise<SessionRec | null> {
-    await ensure();
-    const key = SESSION_PREFIX + id;
-    const raw = await redis.get(key);
-    if (!raw) return null;
+async getSession(id: string): Promise<SessionRec | null> {
+  await ensure();
+  const key = SESSION_PREFIX + id;
+  // atomically get and extend TTL
+  // @ts-ignore ioredis >= 5 supports GETEX; add typing if needed
+  const raw: string | null = await (redis as any).getex(key, 'EX', SESSION_TTL_SECONDS);
+  if (!raw) return null;
 
-    // sliding TTL: keep session alive while active
-    await redis.expire(key, SESSION_TTL_SECONDS);
-
-    const rec = JSON.parse(raw) as SessionRec;
-    // update lastSeenAt opportunistically
-    rec.lastSeenAt = Math.floor(Date.now() / 1000);
-    // write back only if you want exact timestamps (optional)
-    await redis.set(key, JSON.stringify(rec), 'EX', SESSION_TTL_SECONDS);
-
-    return rec;
-  },
+  const rec = JSON.parse(raw) as SessionRec;
+  const now = Math.floor(Date.now() / 1000);
+  if (now - (rec.lastSeenAt ?? 0) >= LAST_SEEN_WRITE_INTERVAL) {
+    rec.lastSeenAt = now;
+    // Best-effort write; TTL already extended by GETEX
+    await redis.set(key, JSON.stringify(rec), 'KEEPTTL');
+  }
+  return rec;
+},
 
   async touchSession(id: string) {
     await ensure();
@@ -169,3 +171,12 @@ export const sessionStore = {
     return { sessions: sessIds.length, refreshes: refIds.length };
   },
 };
+
+async function readSessionQuick(id: string): Promise<SessionRec | null> {
+  await ensure();
+  const raw = await redis.get(SESSION_PREFIX + id);
+  return raw ? (JSON.parse(raw) as SessionRec) : null;
+}
+export { readSessionQuick };
+
+
