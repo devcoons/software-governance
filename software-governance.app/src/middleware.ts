@@ -43,6 +43,7 @@ const matches = (list: RegExp[], p: string) => list.some((re) => re.test(p));
 function buildSafeNext(req: NextRequest): string {
   const path = req.nextUrl.pathname;
   const search = req.nextUrl.search || '';
+
   // Never allow APIs or internal assets as next targets
   if (
     path.startsWith('/api') ||
@@ -60,6 +61,8 @@ function buildSafeNext(req: NextRequest): string {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const res = NextResponse.next();
+  res.headers.set('x-invoke-path', `${req.nextUrl.pathname}${req.nextUrl.search}`);
   // 0) Unconditional bypasses
   if (matches(PUBLIC_ALWAYS, pathname)) return NextResponse.next();
 
