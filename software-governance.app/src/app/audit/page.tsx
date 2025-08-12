@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies,headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
 
@@ -8,12 +8,18 @@ import Chrome from '@/components/chrome';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export default async function CompliancePage() {
-  const sid = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!sid) redirect('/auth/refresh?next=' + encodeURIComponent('/dashboard'));
+const NEXT_PATH = '/approvals';
 
+export default async function CompliancePage() {
+  const currentPath = (await headers()).get('x-invoke-path') || '/dashboard';
+  const sid = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!sid) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent(currentPath)}`);
+  }
   const sess = await sessionStore.getSession(sid);
-  if (!sess) redirect('/auth/refresh?next=' + encodeURIComponent('/dashboard'));
+  if (!sess) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent(currentPath)}`);
+  }
 
   const { claims } = sess;
 

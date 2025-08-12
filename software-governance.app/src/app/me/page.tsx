@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
 
@@ -11,11 +11,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
+  const currentPath = (await headers()).get('x-invoke-path') || '/dashboard';
   const sid = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!sid) redirect('/auth/refresh?next=' + encodeURIComponent('/me'));
-
+  if (!sid) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent(currentPath)}`);
+  }
   const sess = await sessionStore.getSession(sid);
-  if (!sess) redirect('/auth/refresh?next=' + encodeURIComponent('/me'));
+  if (!sess) {
+    redirect(`/api/session/refresh?next=${encodeURIComponent(currentPath)}`);
+  }
 
   const { claims } = sess;
   const totpEnabled = (claims as any).totp_enabled ?? false;
