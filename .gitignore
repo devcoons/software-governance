@@ -1,3 +1,14 @@
+# ------------------------
+# VSCode / IDE configs (keep workspace settings only if needed)
+# ------------------------
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.code-workspace
+
+# ------------------------
+# Secrets
+# ------------------------
 compose/secrets/*
 
 # ------------------------

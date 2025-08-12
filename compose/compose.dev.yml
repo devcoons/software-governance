@@ -16,6 +16,8 @@ services:
       - db_password
     volumes:
       - db_data:/var/lib/mysql
+    ports:
+      - "13306:3306"   # ← expose to host for seed/scripts
     healthcheck:
       test: ["CMD-SHELL","mysqladmin ping -h localhost -u root -p$$(cat /run/secrets/db_root_password) --silent"]
       interval: 5s
@@ -32,6 +34,8 @@ services:
       - redis_password
     volumes:
       - redis_data:/data
+    ports:
+      - "16379:6379"   # ← expose to host for local dev
     healthcheck:
       test: ["CMD-SHELL","redis-cli -a \"$$(cat /run/secrets/redis_password)\" PING"]
       interval: 5s
