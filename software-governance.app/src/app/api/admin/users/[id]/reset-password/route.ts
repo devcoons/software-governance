@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/authz';
 import { setPassword } from '@/lib/repos/users.repo';
 import { generateTempPassword, hashPassword } from '@/lib/crypto';
 import { audit } from '@/lib/repos/audit.repo';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 
 export const runtime = 'nodejs';
 

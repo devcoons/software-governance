@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, REFRESH_COOKIE, clearAuthCookies } from '@/lib/cookies';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import { setForcePwdCookie } from '@/lib/cookies';
 
 function withTimeout<T>(p: Promise<T>, ms: number) {

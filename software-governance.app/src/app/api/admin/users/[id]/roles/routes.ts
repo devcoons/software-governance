@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, normalizeSingleRole } from '@/lib/authz';
 import { updateRoles } from '@/lib/repos/users.repo';
 import { audit } from '@/lib/repos/audit.repo';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 
 export const runtime = 'nodejs';
 

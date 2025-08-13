@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getByEmail } from '@/lib/repos/users.repo';
 import { verifyPassword } from '@/lib/crypto';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import { setSessionCookie, setRefreshCookie, setForcePwdCookie } from '@/lib/cookies';
 import { rateLimit } from '@/lib/rate';
 import { audit } from '@/lib/repos/audit.repo';

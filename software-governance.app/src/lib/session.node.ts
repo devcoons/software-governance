@@ -1,4 +1,4 @@
-// src/lib/sstore.node.ts
+// src/lib/session.ts
 import Redis from 'ioredis';
 import {
   REDIS_HOST, REDIS_PORT, REDIS_USERNAME, REDIS_PASSWORD,
@@ -7,12 +7,12 @@ import {
   SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS,
 } from '@/auth.config';
 
+
 export type Claims = {
   userId: string;
   email: string;
   roles: string[];
   permissions: string[];
-  // optional flags mirrored from DB if you add them to claims
   totp_enabled?: boolean;
   forcePasswordChange?: boolean;
 };
@@ -35,6 +35,7 @@ const redis = new Redis({
 
 let loggedError = false;
 redis.on('error', (err) => {
+  
   if (!loggedError) {
     console.warn('[redis] connection error:', err?.message || err);
     loggedError = true;
@@ -48,49 +49,10 @@ redis.on('ready', () => {
 async function ensure() {
   const s = redis.status; // 'wait' | 'connecting' | 'ready' | 'reconnecting' | 'end' | 'close'
   if (s === 'ready' || s === 'connecting' || s === 'reconnecting') return;
-  try { await redis.connect(); } catch {/* swallow; caller may retry */}
+  try { await redis.connect(); } catch { }
 }
 
 
-// Compatibility method for old imports
-export async function pingRedis(timeoutMs = 800): Promise<boolean> {
-  const client = new Redis({
-    host: REDIS_HOST,
-    port: REDIS_PORT,
-    username: REDIS_USERNAME || undefined,
-    password: REDIS_PASSWORD || undefined,
-    lazyConnect: true,            
-    enableReadyCheck: false,
-    enableOfflineQueue: false,
-    maxRetriesPerRequest: 0,
-    retryStrategy: () => null,
-    connectTimeout: timeoutMs,
-  });
-
-  const swallow = () => {};
-  client.on('error', swallow);
-  client.on('close', swallow);
-  client.on('end', swallow);
-  client.on('oncomplete', swallow);
-  const deadline = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
-  try {
-    await Promise.race([client.connect(), deadline(timeoutMs)]);
-    if (client.status !== 'ready') return false;
-    const pong = await Promise.race<string | undefined>([
-      client.ping() as Promise<string>,
-      new Promise<string | undefined>(resolve => setTimeout(() => resolve(undefined), timeoutMs)),
-    ]);
-    return pong === 'PONG';
-  } catch {
-    return false;
-  } finally {
-    try { await client.quit(); } catch { }
-    try { client.disconnect(); } catch { }
-    client.off('error', swallow);
-    client.off('close', swallow);
-    client.off('end', swallow);
-  }
-}
 
 export const sessionStore = {
   // SESSION (short-lived)

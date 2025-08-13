@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@/lib/cookies';
-import { readSessionQuick } from '@/lib/sstore.node';
+import { readSessionQuick } from '@/lib/session.node';
 import ForcePasswordForm from '@/app/auth/force-change/ForcePasswordForm'
 
 export const runtime = 'nodejs';

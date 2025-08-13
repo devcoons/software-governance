@@ -2,7 +2,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
 
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import Chrome from '@/components/chrome';
 import TotpSetupCard from '@/app/me/TotpSetupCard';
 import ChangePasswordCard from '@/app/me/ChangePasswordCard';

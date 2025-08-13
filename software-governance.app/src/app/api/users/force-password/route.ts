@@ -1,6 +1,6 @@
 // src/app/api/users/me/force-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import { getById, updatePasswordAndClearForce } from '@/lib/repos/users.repo';
 import { audit } from '@/lib/repos/audit.repo';
 import { verifyPassword, hashPassword } from '@/lib/crypto'; // <- reuse your helpers

@@ -1,14 +1,16 @@
+
 // app/users/page.tsx (or the route you showed)
 import Chrome from '@/components/chrome';
-import Link from 'next/link';
 import { listAllUsers } from '@/lib/repos/users.repo';
 import { requireUsersViewerBlocked } from '@/lib/authz';
 import UsersTable from '@/app/users/_client/UsersTable'; // NEW
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export default async function UsersOverviewPage() {
   const auth = await requireUsersViewerBlocked();
+
   if (!auth.ok) {
     return (
       <main className="p-8">
@@ -17,7 +19,6 @@ export default async function UsersOverviewPage() {
       </main>
     );
   }
-
   const isAdmin = (auth.claims.roles || []).includes('admin');
   const users = await listAllUsers(); // return [{ id, email, roles, totpEnabled, forcePasswordChange, createdAt }, ...]
 

@@ -7,7 +7,7 @@ import {
   clearAuthCookies,
   setForcePwdCookie,
 } from '@/lib/cookies';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 
 export const runtime = 'nodejs';
 

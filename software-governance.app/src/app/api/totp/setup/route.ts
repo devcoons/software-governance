@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE } from '@/lib/cookies';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import { getById, insertAudit } from '@/lib/repos/users.repo';
 import { getTotpByUser, upsertTotpSecret } from '@/lib/repos/totp.repo';
 import { TOTP_ISSUER } from '@/auth.config';

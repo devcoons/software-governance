@@ -1,6 +1,7 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, FORCE_PWD_COOKIE } from '@/lib/cookies';
+import { headers } from 'next/headers';
 
 const PUBLIC_ALWAYS: RegExp[] = [
   /^\/api\/logout$/,
@@ -21,6 +22,7 @@ const SESSION_GUARDED: RegExp[] = [
   /^\/approvals(?:\/|$)/,
   /^\/compliance(?:\/|$)/,
   /^\/audit(?:\/|$)/,
+  /^\/users(?:\/|$)/,
   /^\/users(?!\/me)(?:\/|$)/,
   // Guarded APIs:
   /^\/api\/users(?:\/|$)/,
@@ -59,22 +61,27 @@ function buildSafeNext(req: NextRequest): string {
   return `${path}${search}`;
 }
 
-async function isHealthy(req: NextRequest): Promise<boolean> {
+async function fetchHealth(timeoutMs = 1000) {
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  if (!host) return { ok: false, db: false, redis: false };
+
+  const base = `${proto}://${host}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
   try {
-    const url = new URL('/api/health/ready', req.url);
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 1200);
-    const res = await fetch(url, {
+    const res = await fetch(`${base}/api/health/ready`, {
       cache: 'no-store',
       signal: ctrl.signal,
-      headers: { 'x-internal-health': '1' },   // <— tag request
     });
-    clearTimeout(t);
-    if (!res.ok) return false;
-    const data = await res.json();
-    return !!data?.ok;
+    if (!res.ok) return { ok: false, db: false, redis: false };
+    return (await res.json()) as { ok: boolean; db: boolean; redis: boolean };
   } catch {
-    return false;
+    return { ok: false, db: false, redis: false };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -83,20 +90,21 @@ async function isHealthy(req: NextRequest): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith('/api/health/ready')) {
+  if (pathname.startsWith('/api')) {
     return NextResponse.next();
   }
+
   if (pathname.startsWith('/maintenance')) {
     return NextResponse.next();
   }
-  const healthy = await isHealthy(req);
-  if(!healthy) {
+  const healthy = await fetchHealth(1500);
+  console.log("Middleware: ");
+  console.log(healthy);
+  if(!healthy.ok) {    
       return NextResponse.redirect(new URL('/maintenance', req.url));
   }
 
   const res = NextResponse.next();
-  res.headers.set('x-invoke-path', `${req.nextUrl.pathname}${req.nextUrl.search}`);
-
   // 0) Unconditional bypasses
   if (matches(PUBLIC_ALWAYS, pathname)) return NextResponse.next();
 

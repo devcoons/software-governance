@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, REFRESH_COOKIE, SESSION_TTL_SECONDS, REFRESH_TTL_SECONDS } from '@/lib/cookies';
 
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import NavBar from '@/components/navbar';
 import FooterBar from '@/components/footer';
 

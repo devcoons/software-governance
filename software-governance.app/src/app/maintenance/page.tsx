@@ -29,9 +29,9 @@ async function fetchHealth(timeoutMs = 1000) {
 }
 
 export default async function MaintenancePage() {
-  const { ok: healthy } = await fetchHealth(1000);
-
-  if (healthy) {
+  const res = await fetchHealth(2000);
+  console.log(res);
+  if (res.ok) {
     return redirect('/login');
   }
 

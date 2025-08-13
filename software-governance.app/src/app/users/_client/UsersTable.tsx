@@ -66,16 +66,19 @@ export default function UsersTable({
   // New: Track error messages per userId for role changes
   const [roleErrors, setRoleErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    const sp = new URLSearchParams(params.toString());
-    if (query) sp.set('q', query);
-    else sp.delete('q');
-    sp.set('sort', sortKey);
-    sp.set('dir', sortDir);
-    sp.set('page', String(page));
-    router.replace(`${pathname}?${sp.toString()}` as Route);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, sortKey, sortDir, page]);
+useEffect(() => 
+  {
+  const sp = new URLSearchParams(params.toString());
+  if (query.trim()) sp.set('q', query.trim()); else sp.delete('q');
+  sp.set('sort', sortKey);
+  sp.set('dir', sortDir);
+  sp.set('page', String(page));
+
+  const next = `${pathname}?${sp.toString()}`;
+  const current = `${pathname}?${params.toString()}`;
+  if (next !== current) router.replace(next as Route);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [query, sortKey, sortDir, page]);
 
   const askForTOTP = async (action: (pin: string) => Promise<void>) => {
     const hasTOTP = await currentAdminHasTOTP();

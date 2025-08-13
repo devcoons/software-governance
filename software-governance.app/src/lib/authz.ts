@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE } from '@/lib/cookies';
-import { sessionStore } from '@/lib/sstore.node';
+import { sessionStore } from '@/lib/session.node';
 import type { User } from '@/lib/repos/users.repo';
 import * as usersRepo from '@/lib/repos/users.repo';
 
