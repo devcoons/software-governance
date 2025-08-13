@@ -40,6 +40,39 @@ function fmtDate(x: UserRow['createdAt']) {
   }
 }
 
+/** Minimal one-time password modal (inline) */
+function OneTimePasswordModal({
+  email,
+  password,
+  onClose,
+}: {
+  email: string;
+  password: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="card bg-base-100 w-full max-w-md shadow-xl">
+        <div className="card-body">
+          <h3 className="card-title">Temporary password created</h3>
+          <p className="text-sm opacity-80">
+            Share this password with <span className="font-semibold">{email}</span> securely.
+            It will be shown only once.
+          </p>
+          <div className="mt-4 p-3 rounded-box bg-base-200 font-mono text-lg break-all select-all">
+            {password}
+          </div>
+          <div className="card-actions justify-end mt-4">
+            <button className="btn btn-primary" onClick={onClose}>
+              I’ve saved it
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UsersTable({
   users,
   isAdmin,
@@ -51,7 +84,11 @@ export default function UsersTable({
   const pathname = usePathname();
   const params = useSearchParams();
 
-  const [query, setQuery] = useState(params.get('q') ?? '');
+  // Debounced search: searchDraft updates on keystroke; query updates after 400ms
+  const initialQ = params.get('q') ?? '';
+  const [searchDraft, setSearchDraft] = useState(initialQ);
+  const [query, setQuery] = useState(initialQ);
+
   const [sortKey, setSortKey] = useState<SortKey>(
     (params.get('sort') as SortKey) || 'created'
   );
@@ -60,38 +97,86 @@ export default function UsersTable({
   );
   const [page, setPage] = useState(Number(params.get('page') || 1));
 
-  const [totpModal, setTotpModal] = useState<null | { action: (pin: string) => Promise<void> }>(null);
+  const [totpModal, setTotpModal] = useState<
+    | null
+    | {
+        action: (pin: string) => Promise<void>;
+        onCancel?: () => void;
+      }
+  >(null);
   const [requireEnableTOTP, setRequireEnableTOTP] = useState(false);
 
-  // New: Track error messages per userId for role changes
+  // Per-user transient errors for role changes
   const [roleErrors, setRoleErrors] = useState<Record<string, string>>({});
 
-useEffect(() => 
-  {
-  const sp = new URLSearchParams(params.toString());
-  if (query.trim()) sp.set('q', query.trim()); else sp.delete('q');
-  sp.set('sort', sortKey);
-  sp.set('dir', sortDir);
-  sp.set('page', String(page));
+  // One-time password modal state after reset
+  const [passwordModal, setPasswordModal] = useState<null | {
+    email: string;
+    password: string;
+  }>(null);
 
-  const next = `${pathname}?${sp.toString()}`;
-  const current = `${pathname}?${params.toString()}`;
-  if (next !== current) router.replace(next as Route);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [query, sortKey, sortDir, page]);
+  // --- 400ms debounce: commit searchDraft -> query
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      if (searchDraft !== query) {
+        setQuery(searchDraft);
+        setPage(1);
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDraft]);
 
-  const askForTOTP = async (action: (pin: string) => Promise<void>) => {
-    const hasTOTP = await currentAdminHasTOTP();
-    if (!hasTOTP) {
-      setRequireEnableTOTP(true);
-      return;
+  // Keep URL in sync with UI state (guard no-op replaces)
+  useEffect(() => {
+    const sp = new URLSearchParams(params.toString());
+    if (query.trim()) sp.set('q', query.trim());
+    else sp.delete('q');
+    sp.set('sort', sortKey);
+    sp.set('dir', sortDir);
+    sp.set('page', String(page));
+
+    const next = `${pathname}?${sp.toString()}`;
+    const current = `${pathname}?${params.toString()}`;
+    if (next !== current) router.replace(next as Route);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, sortKey, sortDir, page]);
+
+  /** Ask for TOTP; supports a cancel hook to revert UI when user cancels */
+  const askForTOTP = async (
+    action: (pin: string) => Promise<void>,
+    onCancel?: () => void
+  ) => {
+    try {
+      const hasTOTP = await currentAdminHasTOTP();
+      if (!hasTOTP) {
+        setRequireEnableTOTP(true);
+        if (onCancel) onCancel(); // revert role UI if we opened from role change
+        return;
+      }
+      setTotpModal({ action, onCancel });
+    } catch {
+      if (onCancel) onCancel();
+     
     }
-    setTotpModal({ action });
   };
+
+  /** Extract password from different possible return shapes */
+  function extractTempPassword(result: any): string | null {
+    if (!result) return null;
+    if (typeof result === 'string') return result;
+    if (typeof result?.password === 'string') return result.password;
+    if (typeof result?.tempPassword === 'string') return result.tempPassword;
+    if (typeof result?.temp_pass === 'string') return result.temp_pass;
+    return null;
+  }
 
   const handleResetPassword = (userId: string, email: string) => {
     askForTOTP(async (pin) => {
-      await resetPassword(userId, email, pin);
+      const res = await resetPassword(userId, email, pin);
+      const pwd = extractTempPassword(res);
+      if (pwd) setPasswordModal({ email, password: pwd });
+      else router.refresh();
     });
   };
 
@@ -102,36 +187,51 @@ useEffect(() =>
     });
   };
 
-    const { show, hide } = useManualLoading();
+  const { show, hide } = useManualLoading();
 
-const handleChangeRole = (userId: string, oldRole: string, newRole: string, revert: () => void, done: () => void) => {
-    askForTOTP(async (pin) => {
-     
+  const handleChangeRole = (
+    userId: string,
+    oldRole: string,
+    newRole: string,
+    revert: () => void,
+    done: () => void
+  ) => {
+    const onCancel = () => {
       try {
-        await changeUserRole(userId, newRole as any, pin);
-        setRoleErrors((prev) => {
-          const copy = { ...prev };
-          delete copy[userId];
-          return copy;
-        });
-      } catch (err: any) {
         revert();
-        setRoleErrors((prev) => ({
-          ...prev,
-          [userId]: err?.message || 'Failed to update role',
-        }));
-        setTimeout(() => {
+      } finally {
+        done();
+      }
+    };
+
+    askForTOTP(
+      async (pin) => {
+        try {
+          await changeUserRole(userId, newRole as any, pin);
           setRoleErrors((prev) => {
             const copy = { ...prev };
             delete copy[userId];
             return copy;
           });
-        }, 5000);
-      } finally {
-       
-        done();
-      }
-    });
+        } catch (err: any) {
+          revert();
+          setRoleErrors((prev) => ({
+            ...prev,
+            [userId]: err?.message || 'Failed to update role',
+          }));
+          setTimeout(() => {
+            setRoleErrors((prev) => {
+              const copy = { ...prev };
+              delete copy[userId];
+              return copy;
+            });
+          }, 5000);
+        } finally {
+          done();
+        }
+      },
+      onCancel
+    );
   };
 
   const filtered = useMemo(() => {
@@ -226,24 +326,26 @@ const handleChangeRole = (userId: string, oldRole: string, newRole: string, reve
       {/* Search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 border-b border-base-300 bg-base-100 rounded-t-box">
         <div className="relative w-full sm:max-w-md">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-70">
-            🔍
-          </span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-70">🔍</span>
           <input
             type="search"
             className="input input-bordered w-full pl-10 pr-9 h-10"
             placeholder="Search by any field…"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchDraft !== query) {
+                setQuery(searchDraft);
+                setPage(1);
+              }
             }}
           />
-          {query && (
+          {searchDraft && (
             <button
               type="button"
               className="absolute right-2 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs"
               onClick={() => {
+                setSearchDraft('');
                 setQuery('');
                 setPage(1);
               }}
@@ -279,13 +381,16 @@ const handleChangeRole = (userId: string, oldRole: string, newRole: string, reve
                   <td>
                     {isAdmin ? (
                       <>
-<RoleSelect
-    userId={u.id}
-    initialRole={role}
-    onChange={(newRole, revert, done) => handleChangeRole(u.id, role, newRole, revert, done)}
-  />
-  {roleErrors[u.id] && <div className="text-error text-xs mt-1">{roleErrors[u.id]}</div>}
-
+                        <RoleSelect
+                          userId={u.id}
+                          initialRole={role}
+                          onChange={(newRole, revert, done) =>
+                            handleChangeRole(u.id, role, newRole, revert, done)
+                          }
+                        />
+                        {roleErrors[u.id] && (
+                          <div className="text-error text-xs mt-1">{roleErrors[u.id]}</div>
+                        )}
                       </>
                     ) : (
                       <span className="badge badge-outline">{role}</span>
@@ -317,10 +422,7 @@ const handleChangeRole = (userId: string, oldRole: string, newRole: string, reve
             })}
             {pageItems.length === 0 && (
               <tr>
-                <td
-                  colSpan={isAdmin ? 6 : 5}
-                  className="text-center py-8 opacity-70"
-                >
+                <td colSpan={isAdmin ? 6 : 5} className="text-center py-8 opacity-70">
                   No users found.
                 </td>
               </tr>
@@ -345,9 +447,7 @@ const handleChangeRole = (userId: string, oldRole: string, newRole: string, reve
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
-              className={`btn btn-sm join-item ${
-                n === safePage ? 'btn-primary' : ''
-              }`}
+              className={`btn btn-sm join-item ${n === safePage ? 'btn-primary' : ''}`}
               onClick={() => setPage(n)}
             >
               {n}
@@ -366,23 +466,43 @@ const handleChangeRole = (userId: string, oldRole: string, newRole: string, reve
       {/* TOTP modal */}
       {totpModal && (
         <TOTPModal
-          onCancel={() => setTotpModal(null)}
+          onCancel={() => {
+            try {
+              totpModal.onCancel?.(); // revert role + enable select
+            } finally {
+              setTotpModal(null);
+            }
+          }}
           onSubmit={async (pin) => {
             const act = totpModal?.action;
-    if (!act) return;
+            if (!act) return;
 
-    show(); // 👈 show overlay before closing modal
-    setTotpModal(null);
-
-    try {
-      await act(pin);
-    } finally {
-      hide();
-    }}}
+            const { show, hide } = useManualLoading(); // ok to call here? No — use top-level:
+            // We already have top-level show/hide:
+            // show();
+            setTotpModal(null);
+            try {
+              show();
+              await act(pin);
+            } finally {
+              hide();
+            }
+          }}
         />
       )}
+
+      {/* Prompt to enable TOTP if admin doesn't have it */}
       {requireEnableTOTP && (
         <EnableTOTPRequiredModal onClose={() => setRequireEnableTOTP(false)} />
+      )}
+
+      {/* One-time password display after successful reset */}
+      {passwordModal && (
+        <OneTimePasswordModal
+          email={passwordModal.email}
+          password={passwordModal.password}
+          onClose={() => setPasswordModal(null)}
+        />
       )}
     </>
   );
