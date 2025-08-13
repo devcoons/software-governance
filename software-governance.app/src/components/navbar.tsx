@@ -4,6 +4,7 @@ import NavLinksClient from '@/components/navbar/NavLinks.client';
 import SubnavClient from '@/components/navbar/Subnav.client';
 
 import { getSessionClaims } from '@/lib/authz'; // server-only
+import MeLink from './navbar/MeLink.client';
 
 
 
@@ -56,6 +57,10 @@ export default async function NavBar() {
       ? [{ label: 'Overview', href: '/users' }]
       : [];
 
+  const hasSubnav =
+  (usersSubpages?.length ?? 0) > 0 ||
+  withUsers.some(i => (i.subpages?.length ?? 0) > 0);
+
   return (
     <div className="bg-base-100 shadow-sm">
       <div className="navbar max-w-screen-xl mx-auto px-4 lg:px-8">
@@ -73,9 +78,7 @@ export default async function NavBar() {
 
         {/* RIGHT */}
         <div className="navbar-end gap-3">
-          <Link href={'/me'} className="btn btn-sm btn-circle" aria-label="My Account">
-            ID
-          </Link>
+         <MeLink />
           <form action="/api/logout" method="post">
             <button type="submit" className="btn btn-sm btn-outline">
               Logout
@@ -84,13 +87,18 @@ export default async function NavBar() {
         </div>
       </div>
 
-      {/* SECONDARY NAV (desktop only) */}
-      <div className="bg-base-200 border-t border-base-300 hidden lg:block">
-        <SubnavClient
-          items={withUsers}
-          usersSubpages={usersSubpages}
-        />
-      </div>
+{/* SECONDARY NAV (desktop only, fixed height) */}
+<div className="bg-base-200 border-t border-base-300 hidden lg:block">
+  {/* Container mirrors the top bar width + fixed height to avoid page shift */}
+  <div className="max-w-screen-xl mx-auto px-4 lg:px-8 h-12 flex items-center">
+    {hasSubnav ? (
+      <SubnavClient items={withUsers} usersSubpages={usersSubpages} />
+    ) : (
+      // Keep the same height even with no subpages
+      <div aria-hidden className="w-full" />
+    )}
+  </div>
+</div>
 
       {/* MOBILE DROPDOWN */}
       <div className="navbar lg:hidden border-t border-base-300 px-4">
