@@ -53,12 +53,42 @@ async function ensure() {
 
 
 // Compatibility method for old imports
-export async function pingRedis(): Promise<boolean> {
-  await ensure();
+export async function pingRedis(timeoutMs = 800): Promise<boolean> {
+  const client = new Redis({
+    host: REDIS_HOST,
+    port: REDIS_PORT,
+    username: REDIS_USERNAME || undefined,
+    password: REDIS_PASSWORD || undefined,
+    lazyConnect: true,            
+    enableReadyCheck: false,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 0,
+    retryStrategy: () => null,
+    connectTimeout: timeoutMs,
+  });
+
+  const swallow = () => {};
+  client.on('error', swallow);
+  client.on('close', swallow);
+  client.on('end', swallow);
+  client.on('oncomplete', swallow);
+  const deadline = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
   try {
-    return (await redis.ping()) === 'PONG';
+    await Promise.race([client.connect(), deadline(timeoutMs)]);
+    if (client.status !== 'ready') return false;
+    const pong = await Promise.race<string | undefined>([
+      client.ping() as Promise<string>,
+      new Promise<string | undefined>(resolve => setTimeout(() => resolve(undefined), timeoutMs)),
+    ]);
+    return pong === 'PONG';
   } catch {
     return false;
+  } finally {
+    try { await client.quit(); } catch { }
+    try { client.disconnect(); } catch { }
+    client.off('error', swallow);
+    client.off('close', swallow);
+    client.off('end', swallow);
   }
 }
 

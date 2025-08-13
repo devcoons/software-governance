@@ -5,6 +5,7 @@ import { SESSION_COOKIE, FORCE_PWD_COOKIE } from '@/lib/cookies';
 const PUBLIC_ALWAYS: RegExp[] = [
   /^\/api\/logout$/,
   /^\/api\/health\/.*$/,
+  /^\/maintenance\/.*$/,
 ];
 
 const PUBLIC: RegExp[] = [
@@ -58,14 +59,48 @@ function buildSafeNext(req: NextRequest): string {
   return `${path}${search}`;
 }
 
+async function isHealthy(req: NextRequest): Promise<boolean> {
+  try {
+    const url = new URL('/api/health/ready', req.url);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 1200);
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: ctrl.signal,
+      headers: { 'x-internal-health': '1' },   // <— tag request
+    });
+    clearTimeout(t);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data?.ok;
+  } catch {
+    return false;
+  }
+}
+
+
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (pathname.startsWith('/api/health/ready')) {
+    return NextResponse.next();
+  }
+  if (pathname.startsWith('/maintenance')) {
+    return NextResponse.next();
+  }
+  const healthy = await isHealthy(req);
+  if(!healthy) {
+      return NextResponse.redirect(new URL('/maintenance', req.url));
+  }
+
   const res = NextResponse.next();
   res.headers.set('x-invoke-path', `${req.nextUrl.pathname}${req.nextUrl.search}`);
+
   // 0) Unconditional bypasses
   if (matches(PUBLIC_ALWAYS, pathname)) return NextResponse.next();
 
+  
   // 1) Force-password gate (cookie only, no network calls)
   const isForced = req.cookies.get(FORCE_PWD_COOKIE)?.value === '1';
   if (isForced && !matches(FORCE_ALLOWED, pathname)) {
