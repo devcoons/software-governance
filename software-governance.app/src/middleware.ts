@@ -1,148 +1,115 @@
-// src/middleware.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_COOKIE, FORCE_PWD_COOKIE } from '@/lib/cookies';
-import { headers } from 'next/headers';
+/* middleware.ts */
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */
 
-const PUBLIC_ALWAYS: RegExp[] = [
-  /^\/api\/logout$/,
-  /^\/api\/health\/.*$/,
-  /^\/maintenance\/.*$/,
-];
+import { NextRequest, NextResponse } from 'next/server'
+import appConfig from '@/config.e'
 
-const PUBLIC: RegExp[] = [
-  /^\/$/,                   // keep if homepage is public
-  /^\/login(?:\/|$)$/,
-  /^\/api\/login(?:\/|$)$/,
-  /^\/api\/session\/refresh(?:\/|$)$/, // refresh API must be public
-];
+/* ---------------------------------------------------------------------- */
 
-const SESSION_GUARDED: RegExp[] = [
-  /^\/dashboard(?:\/|$)/,
-  /^\/registry(?:\/|$)/,
-  /^\/approvals(?:\/|$)/,
-  /^\/compliance(?:\/|$)/,
-  /^\/audit(?:\/|$)/,
-  /^\/users(?:\/|$)/,
-  /^\/users(?!\/me)(?:\/|$)/,
-  // Guarded APIs:
-  /^\/api\/users(?:\/|$)/,
-  /^\/api\/registry(?:\/|$)/,
-  /^\/api\/approvals(?:\/|$)/,
-  /^\/api\/audit(?:\/|$)/,
-];
+type HealthCache = { ts: number; ok: boolean }
+const g = globalThis as any
+let edgeHealthCache: HealthCache | null = g.__EDGE_HEALTH__ || null
 
-const FORCE_ALLOWED: RegExp[] = [
-  /^\/auth\/force-change(?:\/|$)$/,
-  /^\/api\/users\/force-password(?:\/|$)$/,
-  /^\/api\/logout(?:\/|$)$/,
-  /^\/_next\//,
-  /^\/public\//,
-];
+/* ---------------------------------------------------------------------- */
 
-/** Simple matcher */
-const matches = (list: RegExp[], p: string) => list.some((re) => re.test(p));
-
-/** Build a safe "next" target that never points to API/static */
-function buildSafeNext(req: NextRequest): string {
-  const path = req.nextUrl.pathname;
-  const search = req.nextUrl.search || '';
-
-  // Never allow APIs or internal assets as next targets
-  if (
-    path.startsWith('/api') ||
-    path.startsWith('/_next') ||
-    path.startsWith('/public') ||
-    path === '/favicon.ico'
-  ) {
-    return '/dashboard';
+function isAllowedPath(pathname: string): boolean {
+  if (pathname === '/maintenance') return true
+  if (appConfig.ALLOW_EXACT.includes(pathname)) return true
+  for (const p of appConfig.ALLOW_PREFIXES) {
+    if (pathname.startsWith(p)) return true
   }
-  // Avoid protocol-relative or malformed
-  if (!path.startsWith('/')) return '/dashboard';
-  return `${path}${search}`;
+  return false
 }
 
-async function fetchHealth(timeoutMs = 1000) {
-  const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  if (!host) return { ok: false, db: false, redis: false };
+/* ---------------------------------------------------------------------- */
 
-  const base = `${proto}://${host}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+function isProtectedPath(pathname: string): boolean {
+  for (const p of appConfig.PROTECTED_PREFIXES) {
+    if (pathname === p || pathname.startsWith(p + '/')) return true
+  }
+  return false
+}
 
+/* ---------------------------------------------------------------------- */
+
+function isPageNavigation(req: NextRequest): boolean {
+  const mode = req.headers.get('sec-fetch-mode') || ''
+  const dest = req.headers.get('sec-fetch-dest') || ''
+  const accept = req.headers.get('accept') || ''
+  const prefetch = req.headers.get('next-router-prefetch') === '1'
+  if (prefetch) return false
+  if (mode === 'navigate' || dest === 'document') return true
+  if (accept.includes('text/html')) return true
+  if (accept.includes('text/x-component')) return true
+  return false
+}
+
+/* ---------------------------------------------------------------------- */
+
+function edgeCacheFresh(): boolean {
+  if (!edgeHealthCache) return false
+  return Date.now() - edgeHealthCache.ts < appConfig.HEALTH_CACHE_MS
+}
+
+/* ---------------------------------------------------------------------- */
+
+async function checkHealth(req: NextRequest): Promise<boolean> {
+  if (edgeCacheFresh()) return edgeHealthCache!.ok
   try {
-    const res = await fetch(`${base}/api/health/ready`, {
-      cache: 'no-store',
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return { ok: false, db: false, redis: false };
-    return (await res.json()) as { ok: boolean; db: boolean; redis: boolean };
+    const url = new URL('/api/health/ready', req.url)
+    const res = await fetch(url, { cache: 'no-store' })
+    const ok = res.ok
+    edgeHealthCache = { ts: Date.now(), ok }
+    g.__EDGE_HEALTH__ = edgeHealthCache
+    return ok
   } catch {
-    return { ok: false, db: false, redis: false };
-  } finally {
-    clearTimeout(timer);
+    edgeHealthCache = { ts: Date.now(), ok: false }
+    g.__EDGE_HEALTH__ = edgeHealthCache
+    return false
   }
 }
 
-
+/* ---------------------------------------------------------------------- */
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl
 
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
+  if (pathname.startsWith('/api/')) return NextResponse.next()
+  if (isAllowedPath(pathname)) return NextResponse.next()
+  if (!isPageNavigation(req)) return NextResponse.next()
+
+  const healthy = await checkHealth(req)
+  if (!healthy) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/maintenance'
+    url.search = ''
+    url.searchParams.set('next', `${pathname}${search}`)
+    return NextResponse.redirect(url)
   }
 
-  if (pathname.startsWith('/maintenance')) {
-    return NextResponse.next();
-  }
-  const healthy = await fetchHealth(1500);
-  console.log("Middleware: ");
-  console.log(healthy);
-  if(!healthy.ok) {    
-      return NextResponse.redirect(new URL('/maintenance', req.url));
-  }
+  if (!isProtectedPath(pathname)) return NextResponse.next()
 
-  const res = NextResponse.next();
-  // 0) Unconditional bypasses
-  if (matches(PUBLIC_ALWAYS, pathname)) return NextResponse.next();
+  const sid = req.cookies.get(appConfig.SESSION_COOKIE)?.value || ''
+  if (sid) return NextResponse.next()
 
-  
-  // 1) Force-password gate (cookie only, no network calls)
-  const isForced = req.cookies.get(FORCE_PWD_COOKIE)?.value === '1';
-  if (isForced && !matches(FORCE_ALLOWED, pathname)) {
-    const url = req.nextUrl.clone();
-    if (url.pathname !== '/auth/force-change') {
-      url.pathname = '/auth/force-change';
-      url.search = ''; // break potential chains
-    }
-    return NextResponse.redirect(url);
+  const rid = req.cookies.get(appConfig.REFRESH_COOKIE)?.value || ''
+  const url = req.nextUrl.clone()
+  if (rid) {
+    url.pathname = '/api/auth/session/bridge'
+    url.search = ''
+    url.searchParams.set('next', `${pathname}${search}`)
+    return NextResponse.redirect(url)
   }
 
-  // 2) Public pages/APIs
-  if (matches(PUBLIC, pathname)) return NextResponse.next();
-
-  // 3) Guarded pages/APIs: require presence of session cookie (no validation here)
-  if (matches(SESSION_GUARDED, pathname)) {
-    const sid = req.cookies.get(SESSION_COOKIE)?.value;
-    if (!sid) {
-      // Send the browser directly to the API refresh endpoint so cookies are included
-      const url = req.nextUrl.clone();
-      url.pathname = '/api/session/refresh';
-      url.search = `?next=${encodeURIComponent(buildSafeNext(req))}`;
-      // 307 preserves method, the API will respond with 303 onward to the page
-      return NextResponse.redirect(url, { status: 307 });
-    }
-  }
-
-  // 4) Everything else is public
-  return NextResponse.next();
+  url.pathname = '/login'
+  url.search = ''
+  url.searchParams.set('next', `${pathname}${search}`)
+  return NextResponse.redirect(url)
 }
 
+/* ---------------------------------------------------------------------- */
+
 export const config = {
-  matcher: [
-    // Exclude common static/assets and health
-    '/((?!_next|static|favicon.ico|robots.txt|sitemap.xml|images|public|api/health).*)',
-  ],
-};
+  matcher: ['/((?!api|_next|static|assets).*)'],
+}

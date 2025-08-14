@@ -1,40 +1,42 @@
-// app/api/admin/users/reset-password/route.ts
-import { NextResponse } from 'next/server';
-import { z } from 'zod';
-import { requireAdmin } from '@/lib/authz';
-import { verifyTotpForUser } from '@/lib/totp';
-import * as usersRepo from '@/lib/repos/users.repo';
-import { generateTempPassword, hashPassword } from '@/lib/crypto';
+/* route.ts */
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */
 
-const schema = z.object({
-  userId: z.string().min(1),
-  email: z.string().email(),
-  totp: z.string().regex(/^\d{6}$/),
-});
+import { NextRequest, NextResponse } from 'next/server'
+import { read as readSession } from '@/server/auth/reader'
+import { deleteUser, setUserTempPassword } from '@/server/db/user-repo'
+import { hasRoles } from '@/server/auth/ctx'
+import { verifyTotpPin } from '@/server/totp/provider'
+import { generatePassword, hashPassword } from '@/server/crypto/password'
 
-export async function POST(req: Request) {
-  const admin = await requireAdmin();
-  if (!admin) {
-    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
-  }
-  if (!admin.totpEnabled) {
-    return NextResponse.json({ ok: false, error: 'TOTP not enabled' }, { status: 400 });
-  }
+/* ---------------------------------------------------------------------- */
 
-  const body = schema.safeParse(await req.json());
-  if (!body.success) {
-    return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 400 });
-  }
+type Body = { userId: string, totp:string }
 
-  const { userId, email, totp } = body.data;
-  if (!(await verifyTotpForUser(admin.id, totp))) {
-    return NextResponse.json({ ok: false, error: 'Invalid TOTP' }, { status: 401 });
-  }
+/* ---------------------------------------------------------------------- */
 
-  const tempPass = generateTempPassword();
-  await usersRepo.setPassword(userId, await hashPassword(tempPass), { forceChange: true });
+export async function POST(req: NextRequest) {
+    const sess = await readSession(req)
+    if (!sess) return NextResponse.json({ ok: false, error: 'unauthenticated' }, { status: 401 })
+    if (!hasRoles(sess,['admin'])) return NextResponse.json({ ok: false, error: 'requires_admin_level' }, { status: 401 })
 
-  // (Optional) send email to `email` with temp password
+    let body: Body
+    try {
+        body = await req.json()
+    } catch {
+        return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
+    }
 
-  return NextResponse.json({ ok: true, tempPassword: tempPass });
+    const verification = await verifyTotpPin(sess.user_id,body.totp);
+
+    if (!verification) return NextResponse.json({ ok: false, error: 'verification_aborted' }, { status: 400 })
+    if (verification.ok)
+    {
+        const new_password =  generatePassword();
+        await setUserTempPassword(body.userId, await hashPassword(new_password));
+      
+        return NextResponse.json({ ok: true, password: new_password })
+    }
+  return NextResponse.json({ ok: false, error: 'verification_failed' }, { status: 400 })
+
 }

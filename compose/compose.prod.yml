@@ -16,9 +16,11 @@ services:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      APP_SEED_FILE: /run/secrets/app_seed
     secrets:
       - db_password
       - redis_password
+      - app_seed
     depends_on:
       db:
         condition: service_healthy
@@ -72,7 +74,9 @@ secrets:
     file: ./secrets/mariadb_app_password.txt
   redis_password:
     file: ./secrets/redis_password.txt
-
+  app_seed:
+    file: ./secrets/app_seed.txt
+    
 volumes:
   db_data:
   redis_data:
