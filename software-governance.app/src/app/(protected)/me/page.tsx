@@ -35,7 +35,7 @@ export default async function Page() {
             <h1 className="text-2xl font-bold mb-6">My Profile</h1>
             <div className="grid md:grid-cols-2 md:items-start gap-8">
                 <div className="flex flex-col gap-8">
-                    <ProfileCard {...userProfile} />
+                    <ProfileCard { ...userProfile} />
                     <AccountCard sid={sid} user_id={userId} claims={sess?.claims} />
                 </div>
                 <div className="flex flex-col gap-8">

@@ -1,20 +1,41 @@
 'use client'
 
 import { DbUserProfile } from "@/server/db/user-profile-repo";
+import { redirect } from "next/dist/server/api-utils";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 
-
+async function UpdateUserProfile(first_name: string, last_name:string, phone_number:string, timezone:string): Promise<boolean>{
+ try {
+    const res = await fetch('/api/me/profile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({
+        first_name: first_name,
+        last_name: last_name,
+        phone_number: phone_number,
+        timezone,
+      }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
 
 
 export default function ProfileCard(profileDetails : DbUserProfile) {
-    const defaultProfile = profileDetails;
+    const router = useRouter()
+    let defaultProfile = profileDetails;
     const [firstname, setFirstname] = useState(defaultProfile.first_name)
     const [lastname, setLastname] = useState(defaultProfile.last_name)
     const [phonenumber, setPhonenumber] = useState(defaultProfile.phone_number)
     const [timezone, setTimezone] = useState(defaultProfile.timezone)
     const changed = (firstname !== defaultProfile.first_name) || (lastname !== defaultProfile.last_name)
                     || (phonenumber !== defaultProfile.phone_number) || (timezone !== defaultProfile.timezone);
+    const [saving, setSaving] = useState(false)
 
     return (
     <div className="card bg-base-100 shadow-md border border-base-300 ">
@@ -52,7 +73,12 @@ export default function ProfileCard(profileDetails : DbUserProfile) {
                 </li>
             </ul>
             <div className="inline-flex gap-2 ">
-                <button className="btn btn-primary w2/7" disabled={!changed}>Save</button>
+                <button className="btn btn-primary w2/7" disabled={!changed} onClick={async ()=>{
+                    const ok = await UpdateUserProfile(firstname,lastname,phonenumber,timezone);
+                    setSaving(false)
+                if (ok) router.refresh()
+                    
+                }}>{saving ? 'Saving…' : 'Save'}</button>
                 <button className="btn btn-outline" disabled={!changed} onClick={(e)=>
                 {
                     setFirstname(defaultProfile.first_name);

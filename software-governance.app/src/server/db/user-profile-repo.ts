@@ -159,3 +159,19 @@ export async function updateUserProfileTimezoneById(userId: string, timezone: st
   if (!p) throw new Error('profile_not_found_after_update')
   return p
 }
+
+/* ---------------------------------------------------------------------- */
+
+export async function updateUserProfileById(userId: string, firstName: string,lastName: string,phoneNumber: string,timezone: string): Promise<DbUserProfile> {
+  const pool = await getPool()
+  await pool.execute(
+    `
+    UPDATE user_profile SET first_name = ?, last_name = ?, phone_number = ?, timezone = ?
+    WHERE user_id =  UNHEX(REPLACE(?, '-', ''))
+    `,
+    [firstName, lastName, phoneNumber, timezone, userId]
+  )
+  const p = await readProfile(pool, userId)
+  if (!p) throw new Error('profile_not_found_after_update')
+  return p
+}
