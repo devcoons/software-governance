@@ -10,6 +10,10 @@ import { verifyPassword, hashPassword } from '@/server/crypto/password'
 import { claimsFromDbUser } from '@/server/session/claims'
 import { newSession, newRefresh } from '@/server/session/utils'
 import { getUaHash, getIpHint } from '@/server/auth/ua-ip'
+import * as usersRepo from "@/server/db/user-repo";
+import { verifyTotpPin } from "@/server/totp/provider";
+import { getSession } from './ctx'
+
 
 /* ---------------------------------------------------------------------- */
 
@@ -18,6 +22,10 @@ export type LoginInput = {
   password: string
   rememberMe: boolean
 }
+
+type ServiceResult =
+  | { ok: true }
+  | { ok: false; error: "invalid_totp" | "weak_password" | "rate_limited" | "not_allowed" | "unknown" };
 
 /* ---------------------------------------------------------------------- */
 
@@ -139,4 +147,66 @@ export async function logout(input: LogoutInput): Promise<{ ok: true }> {
     }
   }
   return { ok: true }
+}
+
+
+export async function resetPasswordWithTotp(
+  username: string,
+  newPassword: string,
+  totp: string,
+  ipHint?: string
+): Promise<ServiceResult> {
+  // Optional: simple rate limit (username + ip). Keep it conservative by default.
+
+  // Policy check — use your central policy if you already have one.
+  if (!isSanePassword(newPassword, config.PASSWORD_MIN_SIZE ?? 10)) {
+    return { ok: false, error: "weak_password" };
+  }
+
+  const user = await usersRepo.findUserByLogin(username);
+  if (!user) {
+    // Avoid user enumeration: behave like success.
+    return { ok: true };
+  }
+
+  // If account is disabled or TOTP not enabled, do not proceed (avoid telling the client why).
+  if (user.is_active === false || user.totp_enabled === false) {
+    return { ok: false, error: "not_allowed" };
+  }
+
+  const check = await verifyTotpPin(user.id, totp);
+  if (!check.ok) {
+    return { ok: false, error: "invalid_totp" };
+  }
+
+  // Hash and update password; clear any temp password flags if your repo supports it.
+  const hash = await hashPassword(newPassword);
+  await usersRepo.updateUserPassword(user.id, hash);
+
+  // Revoke ALL sessions for this user (refresh + session ids), per spec.
+  try {
+
+    await store.revokeUserSessions(user.id);
+  } catch {
+    // If the store fails, the new password still applies, but it's safer to surface a generic error.
+    // You may choose to log this and still return ok. Here we fail closed.
+    return { ok: false, error: "unknown" };
+  }
+
+  // Optionally: write an audit event here (login not required).
+  // await auditRepo.addEvent("password_reset_totp", user.id, { ip: ipHint });
+
+  return { ok: true };
+}
+
+// ————— internals —————
+
+function isSanePassword(pw: string, min = 10): boolean {
+  if (pw.length < min) return false;
+  let classes = 0;
+  if (/[a-z]/.test(pw)) classes++;
+  if (/[A-Z]/.test(pw)) classes++;
+  if (/\d/.test(pw)) classes++;
+  if (/[^A-Za-z0-9]/.test(pw)) classes++;
+  return classes >= 2;
 }

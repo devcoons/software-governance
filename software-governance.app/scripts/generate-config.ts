@@ -157,6 +157,10 @@ function collectValues() {
   const ARGON2_HASH_LEN = asInt('ARGON2_HASH_LEN', process.env.ARGON2_HASH_LEN ?? 32, 32, 16)
   const ARGON2_SALT_LEN = asInt('ARGON2_SALT_LEN', process.env.ARGON2_SALT_LEN ?? 16, 16, 8)
 
+  const PASSWORD_MIN_SIZE = asInt('PASSWORD_MIN_SIZE', process.env.PASSWORD_MIN_SIZE ?? 10, 10, 1)
+
+  const FORGOT_PASS_RATE_LIMIT = asInt('FORGOT_PASS_RATE_LIMIT', process.env.PASSWORD_MIN_SIZE ?? 10, 10, 1)
+
   const LOGIN_WINDOW_SECONDS = asInt('LOGIN_WINDOW_SECONDS', process.env.LOGIN_WINDOW_SECONDS ?? 300, 300, 30)
   const LOGIN_MAX_ATTEMPTS = asInt('LOGIN_MAX_ATTEMPTS', process.env.LOGIN_MAX_ATTEMPTS ?? 10, 10, 1)
 
@@ -231,6 +235,8 @@ const ALLOW_PREFIXES = [
     ALLOW_EXACT,
     ALLOW_PREFIXES,
     PROTECTED_PREFIXES,
+    PASSWORD_MIN_SIZE,
+    FORGOT_PASS_RATE_LIMIT,
   }
 }
 
@@ -286,6 +292,8 @@ const config: ConfigFlat = Object.freeze({
   ALLOW_EXACT: ${JSON.stringify(v.ALLOW_EXACT)},
   ALLOW_PREFIXES: ${JSON.stringify(v.ALLOW_PREFIXES)},
   PROTECTED_PREFIXES: ${JSON.stringify(v.PROTECTED_PREFIXES)},
+  PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
+  FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -348,6 +356,8 @@ const config: ConfigFlat = Object.freeze({
   ALLOW_EXACT: ${JSON.stringify(v.ALLOW_EXACT)},
   ALLOW_PREFIXES: ${JSON.stringify(v.ALLOW_PREFIXES)},
   PROTECTED_PREFIXES: ${JSON.stringify(v.PROTECTED_PREFIXES)},
+  PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
+  FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -372,7 +382,7 @@ function writeFile(relPath: string, content: string) {
 function ensureTypeFile() {
   const rel = 'src/types/config-shape.ts'
   const outFile = path.resolve(process.cwd(), rel)
-  if (fs.existsSync(outFile)) return
+
   const content = `/* config-shape.ts */
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
@@ -417,6 +427,8 @@ export type ConfigFlat = Readonly<{
   ALLOW_EXACT: string[]
   ALLOW_PREFIXES: string[]
   PROTECTED_PREFIXES: string[]
+  PASSWORD_MIN_SIZE: number
+  FORGOT_PASS_RATE_LIMIT: number
 }>
 `
   fs.mkdirSync(path.dirname(outFile), { recursive: true })
