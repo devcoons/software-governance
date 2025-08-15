@@ -2,41 +2,8 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import mysql from 'mysql2/promise'
-import config from '@/config'
-
-/* ---------------------------------------------------------------------- */
-
-async function getPool() {
-  const pool = mysql.createPool({
-    host: config.DB_HOST,
-    port: config.DB_PORT,
-    user: config.DB_USER,
-    password: config.DB_PASSWORD,
-    database: config.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    connectTimeout: 3000,
-  })
-  return pool
-}
-
-/* ---------------------------------------------------------------------- */
-
-function bufToUuid(b: any): string {
-  if (!b) return ''
-  if (typeof b === 'string') return b
-  const hex = Buffer.isBuffer(b) ? b.toString('hex') : Buffer.from(b).toString('hex')
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    hex.slice(12, 16),
-    hex.slice(16, 20),
-    hex.slice(20),
-  ].join('-')
-}
+import type { RowDataPacket, PoolConnection, ResultSetHeader } from 'mysql2/promise'
+import { query, exec, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
 
 /* ---------------------------------------------------------------------- */
 
@@ -69,11 +36,32 @@ export type DbUser = Readonly<{
   updated_at: string
 }>
 
+/* ---------------------------------------------------------------------- */
+
 export type DbUserLite = Omit<DbUser, 'password'>
 
 /* ---------------------------------------------------------------------- */
 
-function rowToUser(row: any): DbUser {
+type DbUserRow = RowDataPacket & {
+  id: Buffer | Uint8Array | string | null
+  email: string
+  username: string
+  password: string
+  is_active: number
+  roles: string | null
+  permissions: string | null
+  totp_enabled: number
+  force_password_change: number
+  temp_password_issued_at: Date | string | null
+  temp_password_used_at: Date | string | null
+  last_login_at: Date | string | null
+  created_at: Date | string
+  updated_at: Date | string
+}
+
+/* ---------------------------------------------------------------------- */
+
+function rowToUser(row: DbUserRow): DbUser {
   return {
     id: bufToUuid(row.id),
     email: String(row.email),
@@ -94,7 +82,7 @@ function rowToUser(row: any): DbUser {
 
 /* ---------------------------------------------------------------------- */
 
-function rowToUserLite(row: any): DbUserLite {
+function rowToUserLite(row: DbUserRow): DbUserLite {
   return {
     id: bufToUuid(row.id),
     email: String(row.email),
@@ -114,76 +102,81 @@ function rowToUserLite(row: any): DbUserLite {
 
 /* ---------------------------------------------------------------------- */
 
+const USER_SELECT = `
+  id, email, username, password, is_active,
+  roles, permissions, totp_enabled, force_password_change,
+  temp_password_issued_at, temp_password_used_at,
+  last_login_at, created_at, updated_at
+`
+
+/* ---------------------------------------------------------------------- */
+
 export async function findUserByLogin(login: string): Promise<DbUser | null> {
-  const pool = await getPool()
-  const sql = `
-    SELECT
-      id, email, username, password, is_active,
-      roles, permissions, totp_enabled, force_password_change,
-      temp_password_issued_at, temp_password_used_at,
-      last_login_at, created_at, updated_at
+  const rows = await query<DbUserRow[]>(
+    `
+    SELECT ${USER_SELECT}
     FROM users
     WHERE email = ? OR username = ?
     LIMIT 1
-  `
-  const [rows] = await pool.query(sql, [login, login])
-  const arr = rows as any[]
-  if (!arr || arr.length === 0) return null
-  return rowToUser(arr[0])
+    `,
+    [login, login]
+  )
+  const row = rows[0]
+  return row ? rowToUser(row) : null
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function findUserById(id: string): Promise<DbUser | null> {
-  const pool = await getPool()
-  const sql = `
-    SELECT
-      id, email, username, password, is_active,
-      roles, permissions, totp_enabled, force_password_change,
-      temp_password_issued_at, temp_password_used_at,
-      last_login_at, created_at, updated_at
+  const rows = await query<DbUserRow[]>(
+    `
+    SELECT ${USER_SELECT}
     FROM users
-    WHERE id =  UNHEX(REPLACE(?, '-', ''))
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
     LIMIT 1
-  `
-  const [rows] = await pool.query(sql, [id])
-  const arr = rows as any[]
-  if (!arr || arr.length === 0) return null
-  return rowToUser(arr[0])
+    `,
+    [id]
+  )
+  const row = rows[0]
+  return row ? rowToUser(row) : null
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function burnTempPassword(userId: string, unusableHash: string): Promise<void> {
-  const pool = await getPool()
-  const sql = `
+  await exec(
+    `
     UPDATE users
     SET password = ?, temp_password_used_at = NOW()
-    WHERE id =  UNHEX(REPLACE(?, '-', '')) AND temp_password_issued_at IS NOT NULL AND temp_password_used_at IS NULL
-  `
-  await pool.execute(sql, [unusableHash, userId])
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+      AND temp_password_issued_at IS NOT NULL
+      AND temp_password_used_at IS NULL
+    `,
+    [unusableHash, userId]
+  )
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function completeForcedPasswordChange(userId: string, newHash: string): Promise<void> {
-  const pool = await getPool()
-  const sql = `
+  await exec(
+    `
     UPDATE users
     SET password = ?,
         force_password_change = 0,
         temp_password_issued_at = NULL,
-        temp_password_used_at = NULL
-    WHERE id =  UNHEX(REPLACE(?, '-', ''))
-  `
-  await pool.execute(sql, [newHash, userId])
+        temp_password_used_at = NULL,
+        updated_at = NOW()
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+    `,
+    [newHash, userId]
+  )
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function upsertTotpSecret(userId: string, secretB32: string): Promise<void> {
-  const pool = await getPool()
-  await pool.execute(
+  await exec(
     `
     INSERT INTO user_totp (user_id, secret_b32, enrolled_at)
     VALUES (UNHEX(REPLACE(?, '-', '')), ?, NOW())
@@ -198,18 +191,27 @@ export async function upsertTotpSecret(userId: string, secretB32: string): Promi
 /* ---------------------------------------------------------------------- */
 
 export async function enableTotp(userId: string): Promise<void> {
-  const pool = await getPool()
-  await pool.execute(
-    `UPDATE users SET totp_enabled = 1 WHERE id = UNHEX(REPLACE(?, '-', ''))`,
+  await exec(
+    `
+    UPDATE users
+    SET totp_enabled = 1, updated_at = NOW()
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+    `,
     [userId]
   )
 }
 
 /* ---------------------------------------------------------------------- */
 
+type TotpInfoRow = RowDataPacket & {
+  enabled: number
+  secret: string | null
+}
+
+/* ---------------------------------------------------------------------- */
+
 export async function getTotpInfo(userId: string): Promise<{ enabled: boolean; secret: string | null }> {
-  const pool = await getPool()
-  const [rows] = await pool.query(
+  const rows = await query<TotpInfoRow[]>(
     `
     SELECT u.totp_enabled AS enabled, t.secret_b32 AS secret
     FROM users u
@@ -219,19 +221,15 @@ export async function getTotpInfo(userId: string): Promise<{ enabled: boolean; s
     `,
     [userId]
   )
-  const arr = rows as any[]
-  if (!arr || arr.length === 0) return { enabled: false, secret: null }
-  return {
-    enabled: Boolean(arr[0].enabled),
-    secret: arr[0].secret ? String(arr[0].secret) : null,
-  }
+  const row = rows[0]
+  if (!row) return { enabled: false, secret: null }
+  return { enabled: Boolean(row.enabled), secret: row.secret ? String(row.secret) : null }
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function updateUserPassword(userId: string, passwordHash: string): Promise<void> {
-  const pool = await getPool()
-  await pool.execute(
+  await exec(
     `
     UPDATE users
     SET
@@ -249,8 +247,7 @@ export async function updateUserPassword(userId: string, passwordHash: string): 
 /* ---------------------------------------------------------------------- */
 
 export async function setUserTempPassword(userId: string, passwordHash: string): Promise<void> {
-  const pool = await getPool()
-  await pool.execute(
+  await exec(
     `
     UPDATE users
     SET
@@ -264,42 +261,41 @@ export async function setUserTempPassword(userId: string, passwordHash: string):
     [passwordHash, userId]
   )
 }
+
 /* ---------------------------------------------------------------------- */
 
 export async function listAllUsers(): Promise<DbUserLite[]> {
-  const pool = await getPool()
-  const sql = `
+  const rows = await query<DbUserRow[]>(
+    `
     SELECT
       id, email, username, is_active,
       roles, permissions, totp_enabled, force_password_change,
       temp_password_issued_at, temp_password_used_at,
       last_login_at, created_at, updated_at
     FROM users
-  `
-  const [rows] = await pool.query(sql)
-  const arr = rows as any[]
-  if(!arr || arr.length === 0)
-    return []
-  return arr.map(rowToUserLite)
+    `
+  )
+  if (!rows || rows.length === 0) return []
+  return rows.map(rowToUserLite)
 }
 
 /* ---------------------------------------------------------------------- */
 
-export async function deleteUser(userId: string) {
-  const pool = await getPool()
-  await pool.query(`DELETE FROM users WHERE id = UNHEX(REPLACE(?, '-', ''))`,userId);
+export async function deleteUser(userId: string): Promise<void> {
+  await exec(
+    `
+    DELETE FROM users
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+    `,
+    [userId]
+  )
 }
-
 
 /* ---------------------------------------------------------------------- */
 
 export async function toggleStatus(userId: string): Promise<boolean | null> {
-  const pool = await getPool()
-  const conn = await pool.getConnection()
-  try {
-    await conn.beginTransaction()
-
-    const [rows] = await conn.query(
+  return withTransaction<boolean | null>(async (conn: PoolConnection) => {
+    const [rows] = await conn.execute<RowDataPacket[]>(
       `
       SELECT is_active
       FROM users
@@ -308,16 +304,11 @@ export async function toggleStatus(userId: string): Promise<boolean | null> {
       `,
       [userId]
     )
-    const arr = rows as any[]
-    if (!arr || arr.length === 0) {
-      await conn.rollback()
-      return null
-    }
-
-    const prev = Boolean(arr[0].is_active)
+    const row = rows[0] as RowDataPacket | undefined
+    if (!row || typeof row.is_active === 'undefined') return null
+    const prev = Boolean((row as any).is_active)
     const next = prev ? 0 : 1
-
-    const [upd]: any = await conn.execute(
+    const [upd] = await conn.execute<ResultSetHeader>(
       `
       UPDATE users
       SET is_active = ?, updated_at = NOW()
@@ -325,28 +316,20 @@ export async function toggleStatus(userId: string): Promise<boolean | null> {
       `,
       [next, userId]
     )
-    if (!upd?.affectedRows) {
-      await conn.rollback()
-      return null
-    }
-
-    await conn.commit()
+    if (!upd.affectedRows) return null
     return Boolean(next)
-  } catch (e) {
-    try { await conn.rollback() } catch {}
-    throw e
-  } finally {
-    conn.release()
-  }
+  })
 }
 
 /* ---------------------------------------------------------------------- */
 
 export async function setUserRole(userId: string, roles: string[]): Promise<void> {
-  const pool = await getPool()
-  await pool.execute(
-     `UPDATE users SET roles = ?, updated_at = CURRENT_TIMESTAMP WHERE id = UNHEX(REPLACE(?, '-', ''))`,
+  await exec(
+    `
+    UPDATE users
+    SET roles = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+    `,
     [JSON.stringify(roles), userId]
-   
   )
 }
