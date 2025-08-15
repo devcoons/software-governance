@@ -2,76 +2,79 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { readSid, applyCookies, buildAuthCookies } from '@/server/http/cookie'
 import { store } from '@/server/session/provider'
 import { hashPassword } from '@/server/crypto/password'
 import { completeForcedPasswordChange, findUserById } from '@/server/db/user-repo'
-import { claimsFromDbUser } from '@/server/session/claims'
 import { newSession } from '@/server/session/utils'
 import config from '@/config'
+import { jsonErr, jsonOk } from '@/server/http/api-reponse'
 
 /* ---------------------------------------------------------------------- */
 
-type Body = {
-  newPassword?: string
-  confirm?: string
-}
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+const BodySchema = z.object({
+    newPassword: z.string().min(1),
+    confirm: z.string().min(1),
+})
 
 /* ---------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
-  let body: Body
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
-  }
+    let body: z.infer<typeof BodySchema>
+    try {
+        body = BodySchema.parse(await req.json())
+    } catch {
+        return jsonErr('bad_request', 400)
+    }
 
-  const newPassword = String(body.newPassword || '')
-  const confirm = String(body.confirm || '')
-  if (!newPassword || newPassword !== confirm) {
-    return NextResponse.json({ ok: false, error: 'password_mismatch' }, { status: 400 })
-  }
+    const newPassword = String(body.newPassword || '')
+    const confirm = String(body.confirm || '')
+    if (!newPassword || newPassword !== confirm) {
+        return jsonErr('password_mismatch', 400)
+    }
 
-  const sid = readSid(req)
-  if (!sid) return NextResponse.json({ ok: false, error: 'no_session' }, { status: 401 })
+    const sid = readSid(req)
+    if (!sid) return jsonErr('no_session', 401)
 
-  const sess = await store.getSession(sid)
-  if (!sess) return NextResponse.json({ ok: false, error: 'invalid_session' }, { status: 401 })
+    const sess = await store.getSession(sid)
+    if (!sess) return jsonErr('invalid_session', 401)
 
-  if (!sess.claims.force_password_change) {
-    return NextResponse.json({ ok: false, error: 'not_forced' }, { status: 400 })
-  }
+    if (!sess.claims.force_password_change) {
+        return jsonErr('not_forced', 400)
+    }
 
-  const user = await findUserById(sess.user_id)
-  if (!user || !user.is_active) {
-    return NextResponse.json({ ok: false, error: 'user_not_active' }, { status: 401 })
-  }
+    const user = await findUserById(sess.user_id)
+    if (!user || !user.is_active) {
+        return jsonErr('user_not_active', 401)
+    }
 
-  const hash = await hashPassword(newPassword)
+    const hash = await hashPassword(newPassword)
+    await completeForcedPasswordChange(user.id, hash)
+    await store.revokeUserSessions(user.id, sid)
 
-  await completeForcedPasswordChange(user.id, hash)
+    const updatedClaims = {
+        ...sess.claims,
+        force_password_change: false,
+        temp_password_issued_at: null,
+        temp_password_used_at: null,
+    }
 
-  await store.revokeUserSessions(user.id, sid)
+    const next = newSession(user.id, updatedClaims)
 
-  const updatedClaims = {
-    ...sess.claims,
-    force_password_change: false,
-    temp_password_issued_at: null,
-    temp_password_used_at: null,
-  }
+    await store.deleteSession(sid)
+    await store.putSession(next)
 
-  const next = newSession(user.id, updatedClaims)
+    const res = jsonOk({})
 
-  await store.deleteSession(sid)
-  await store.putSession(next)
+    const sidOnly = buildAuthCookies({ sid: next.sid, rid: 'ignore', rememberMe: false })
+                    .filter(c => c.name === config.SESSION_COOKIE)
+    applyCookies(res, sidOnly)
 
-  const res = NextResponse.json({ ok: true })
-
-  const sidOnly = buildAuthCookies({ sid: next.sid, rid: 'ignore', rememberMe: false })
-    .filter(c => c.name === config.SESSION_COOKIE)
-  applyCookies(res, sidOnly)
-
-  return res
+    return res
 }

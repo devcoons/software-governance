@@ -15,20 +15,21 @@ export const runtime = 'nodejs'
 /* ---------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
-  const rid = readRid(req)
-  if (!rid) {
-    const r = jsonErr('no_refresh',401) 
-    applyCookies(r, buildClearAuthCookies())
-    return r
-  }
+    const rid = readRid(req)
+    if (!rid) {
+        const r = jsonErr('no_refresh',401) 
+        applyCookies(r, buildClearAuthCookies())
+        return r
+    }
 
-  const result = await refresh(req, rid)
-  if (!result.ok) {
-    const r = jsonErr(result.error,401) 
-    applyCookies(r, buildClearAuthCookies())
+    const result = await refresh(req, rid)
+    if (!result.ok) {
+        const r = jsonErr(result.error,401) 
+        applyCookies(r, buildClearAuthCookies())
+        return r
+    }
+    
+    const r = jsonOk(null) 
+    applyCookies(r, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
     return r
-  }
-  const r = jsonOk(null) 
-  applyCookies(r, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
-  return r
 }

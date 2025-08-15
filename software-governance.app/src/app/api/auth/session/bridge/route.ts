@@ -8,24 +8,37 @@ import { readRid, applyCookies, buildAuthCookies, buildClearAuthCookies } from '
 
 /* ---------------------------------------------------------------------- */
 
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+function sanitizeNext(input: string | null | undefined): string {
+    const v = String(input || '/').trim()
+    if (!v.startsWith('/')) return '/'
+    if (v.startsWith('//')) return '/'
+    return v
+}
+
+/* ---------------------------------------------------------------------- */
+
 export async function GET(req: NextRequest) {
-  const next = req.nextUrl.searchParams.get('next') || '/'
-  const rid = readRid(req)
+    const next = sanitizeNext(req.nextUrl.searchParams.get('next'))
+    const rid = readRid(req)
 
-  if (!rid) {
-    const r = NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, req.url), 303)
-    applyCookies(r, buildClearAuthCookies())
-    return r
-  }
+    if (!rid) {
+        const r = NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, req.url), 303)
+        applyCookies(r, buildClearAuthCookies())
+        return r
+    }
 
-  const result = await refresh(req, rid)
-  if (!result.ok) {
-    const r = NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, req.url), 303)
-    applyCookies(r, buildClearAuthCookies())
-    return r
-  }
+    const result = await refresh(req, rid)
+    if (!result.ok) {
+        const r = NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, req.url), 303)
+        applyCookies(r, buildClearAuthCookies())
+        return r
+    }
 
-  const res = NextResponse.redirect(new URL(next, req.url), 303)
-  applyCookies(res, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
-  return res
+    const res = NextResponse.redirect(new URL(next, req.url), 303)
+    applyCookies(res, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
+    return res
 }
