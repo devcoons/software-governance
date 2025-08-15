@@ -2,10 +2,11 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { read as readSession } from '@/server/auth/reader'
 import { updateUserProfileById } from '@/server/db/user-profile-repo'
+import { jsonErr, jsonOk } from '@/server/http/api-reponse'
 
 /* ---------------------------------------------------------------------- */
 
@@ -25,14 +26,14 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest) {
   const sess = await readSession(req)
   if (!sess) {
-    return NextResponse.json({ ok: false, error: 'unauthenticated' }, { status: 401 })
+    return jsonErr("unauthenticated",401)
   }
 
   let body: z.infer<typeof BodySchema>
   try {
     body = BodySchema.parse(await req.json())
   } catch {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
+    return jsonErr('bad_request', 400)
   }
 
   const profile = await updateUserProfileById(
@@ -43,5 +44,5 @@ export async function POST(req: NextRequest) {
     body.timezone
   )
 
-  return NextResponse.json({ ok: true, profile })
+  return jsonOk(profile)
 }

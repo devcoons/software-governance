@@ -464,7 +464,7 @@ const closePasswordModalAndRefresh = () => {
                         title="Change status"
                       >
                          {u.is_active ? <CircleCheckBigIcon size={18}/> : <Ban size={18}/>}
-                         Active
+                         {u.is_active ? 'Active' : 'Deactivated'}
  </button>
 
 
