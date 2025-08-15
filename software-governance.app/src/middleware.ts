@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import appConfig from '@/config.e'
+import { sanitizeNext } from './server/http/next';
 
 /* ---------------------------------------------------------------------- */
 
@@ -81,11 +82,9 @@ export async function middleware(req: NextRequest) {
 
   const healthy = await checkHealth(req)
   if (!healthy) {
-    const url = req.nextUrl.clone()
-    url.pathname = '/maintenance'
-    url.search = ''
-    url.searchParams.set('next', `${pathname}${search}`)
-    return NextResponse.redirect(url)
+    const next = sanitizeNext(req.nextUrl.pathname + req.nextUrl.search)
+    const maintenance = new URL(`/maintenance?next=${encodeURIComponent(next)}`, req.url)
+    return NextResponse.redirect(maintenance)
   }
 
   if (!isProtectedPath(pathname)) return NextResponse.next()
@@ -96,16 +95,14 @@ export async function middleware(req: NextRequest) {
   const rid = req.cookies.get(appConfig.REFRESH_COOKIE)?.value || ''
   const url = req.nextUrl.clone()
   if (rid) {
-    url.pathname = '/api/auth/session/bridge'
-    url.search = ''
-    url.searchParams.set('next', `${pathname}${search}`)
-    return NextResponse.redirect(url)
+    const next = sanitizeNext(req.nextUrl.pathname + req.nextUrl.search)
+    const maintenance = new URL(`/api/auth/session/bridge?next=${encodeURIComponent(next)}`, req.url)
+    return NextResponse.redirect(maintenance)
   }
 
-  url.pathname = '/login'
-  url.search = ''
-  url.searchParams.set('next', `${pathname}${search}`)
-  return NextResponse.redirect(url)
+    const next = sanitizeNext(req.nextUrl.pathname + req.nextUrl.search)
+    const maintenance = new URL(`/login?next=${encodeURIComponent(next)}`, req.url)
+   return NextResponse.redirect(maintenance)
 }
 
 /* ---------------------------------------------------------------------- */
