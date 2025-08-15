@@ -2,41 +2,46 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { read as readSession } from '@/server/auth/reader'
-import { deleteUser, setUserTempPassword } from '@/server/db/user-repo'
+import { setUserTempPassword } from '@/server/db/user-repo'
 import { hasRoles } from '@/server/auth/ctx'
 import { verifyTotpPin } from '@/server/totp/provider'
 import { generatePassword, hashPassword } from '@/server/crypto/password'
+import { jsonErr, jsonOk } from '@/server/http/api-reponse'
 
 /* ---------------------------------------------------------------------- */
 
-type Body = { userId: string, totp:string }
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+const BodySchema = z.object({
+    userId: z.string().trim().uuid(),
+    totp: z.string().trim().regex(/^\d{6}$/),
+})
 
 /* ---------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
     const sess = await readSession(req)
-    if (!sess) return NextResponse.json({ ok: false, error: 'unauthenticated' }, { status: 401 })
-    if (!hasRoles(sess,['admin'])) return NextResponse.json({ ok: false, error: 'requires_admin_level' }, { status: 401 })
+    if (!sess) return jsonErr('unauthenticated', 401)
+    if (!hasRoles(sess, ['admin'])) return jsonErr('requires_admin_level', 401)
 
-    let body: Body
+    let body: z.infer<typeof BodySchema>
     try {
-        body = await req.json()
+        body = BodySchema.parse(await req.json())
     } catch {
-        return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
+        return jsonErr('bad_request', 400)
     }
 
-    const verification = await verifyTotpPin(sess.user_id,body.totp);
+    const verification = await verifyTotpPin(sess.user_id, body.totp)
+    if (!verification.ok) return jsonErr(verification.error ?? 'verification_failed', 400)
 
-    if (!verification) return NextResponse.json({ ok: false, error: 'verification_aborted' }, { status: 400 })
-    if (verification.ok)
-    {
-        const new_password =  generatePassword();
-        await setUserTempPassword(body.userId, await hashPassword(new_password));
-      
-        return NextResponse.json({ ok: true, password: new_password })
-    }
-  return NextResponse.json({ ok: false, error: 'verification_failed' }, { status: 400 })
+    const new_password = generatePassword()
+    const hash = await hashPassword(new_password)
+    await setUserTempPassword(body.userId, hash)
 
+    return jsonOk({ password: new_password })
 }

@@ -2,42 +2,45 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { login } from '@/server/auth/service'
 import { applyCookies, buildAuthCookies } from '@/server/http/cookie'
+import { jsonErr, jsonOk } from '@/server/http/api-reponse'
 
 /* ---------------------------------------------------------------------- */
 
-type Body = {
-  login?: string
-  password?: string
-  rememberMe?: boolean
-}
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+const BodySchema = z.object({
+    login: z.string().trim().min(1),
+    password: z.string().min(1),
+    rememberMe: z.boolean().optional().default(false),
+})
 
 /* ---------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
-  let body: Body
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
-  }
+    let body: z.infer<typeof BodySchema>
+    try {
+        body = BodySchema.parse(await req.json())
+    } catch {
+        return jsonErr('bad_request', 400)
+    }
 
-  const loginId = String(body.login || '').trim()
-  const password = String(body.password || '')
-  const rememberMe = Boolean(body.rememberMe)
+    const result = await login(req, {
+        login: body.login,
+        password: body.password,
+        rememberMe: body.rememberMe ?? false,
+    })
 
-  if (!loginId || !password) {
-    return NextResponse.json({ ok: false, error: 'missing_credentials' }, { status: 400 })
-  }
+    if (!result.ok) {
+        return jsonErr(result.error ?? 'invalid_credentials', 401)
+    }
 
-  const result = await login(req, { login: loginId, password, rememberMe })
-  if (!result.ok) {
-    return NextResponse.json({ ok: false, error: result.error }, { status: 401 })
-  }
-
-  const res = NextResponse.json({ ok: true, force_password_change: result.forcePasswordChange })
-  applyCookies(res, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
-  return res
+    const res = jsonOk({ force_password_change: result.forcePasswordChange })
+    applyCookies(res, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
+    return res
 }
