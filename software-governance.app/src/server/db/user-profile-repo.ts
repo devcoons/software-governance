@@ -95,14 +95,13 @@ export async function getUserProfileById(userId: string): Promise<DbUserProfile>
 /* ---------------------------------------------------------------------- */
 
 export async function updateUserProfileFirstNameById(userId: string, firstName: string): Promise<DbUserProfile> {
-  const pool = await getPool()
-  await pool.execute(
+    const pool = await getPool()
+    await pool.execute(
     `
-    INSERT INTO user_profile (user_id, first_name)
-    VALUES (UNHEX(REPLACE(?, '-', '')), ?)
-    ON DUPLICATE KEY UPDATE first_name = VALUES(first_name)
+    UPDATE user_profile SET first_name = ?
+    WHERE user_id =  UNHEX(REPLACE(?, '-', ''))
     `,
-    [userId, firstName ?? '']
+    [ firstName, userId]
   )
   const p = await readProfile(pool, userId)
   if (!p) throw new Error('profile_not_found_after_update')
@@ -112,14 +111,13 @@ export async function updateUserProfileFirstNameById(userId: string, firstName: 
 /* ---------------------------------------------------------------------- */
 
 export async function updateUserProfileLastNameById(userId: string, lastName: string): Promise<DbUserProfile> {
-  const pool = await getPool()
-  await pool.execute(
+    const pool = await getPool()
+    await pool.execute(
     `
-    INSERT INTO user_profile (user_id, last_name)
-    VALUES (UNHEX(REPLACE(?, '-', '')), ?)
-    ON DUPLICATE KEY UPDATE last_name = VALUES(last_name)
+    UPDATE user_profile SET last_name = ?
+    WHERE user_id =  UNHEX(REPLACE(?, '-', ''))
     `,
-    [userId, lastName ?? '']
+    [ lastName, userId]
   )
   const p = await readProfile(pool, userId)
   if (!p) throw new Error('profile_not_found_after_update')
@@ -129,14 +127,13 @@ export async function updateUserProfileLastNameById(userId: string, lastName: st
 /* ---------------------------------------------------------------------- */
 
 export async function updateUserProfilePhoneNumberById(userId: string, phoneNumber: string): Promise<DbUserProfile> {
-  const pool = await getPool()
-  await pool.execute(
+    const pool = await getPool()
+    await pool.execute(
     `
-    INSERT INTO user_profile (user_id, phone_number)
-    VALUES (UNHEX(REPLACE(?, '-', '')), ?)
-    ON DUPLICATE KEY UPDATE phone_number = VALUES(phone_number)
+    UPDATE user_profile SET phone_number = ?
+    WHERE user_id =  UNHEX(REPLACE(?, '-', ''))
     `,
-    [userId, phoneNumber ?? '']
+    [ phoneNumber, userId]
   )
   const p = await readProfile(pool, userId)
   if (!p) throw new Error('profile_not_found_after_update')
@@ -146,14 +143,13 @@ export async function updateUserProfilePhoneNumberById(userId: string, phoneNumb
 /* ---------------------------------------------------------------------- */
 
 export async function updateUserProfileTimezoneById(userId: string, timezone: string): Promise<DbUserProfile> {
-  const pool = await getPool()
-  await pool.execute(
+    const pool = await getPool()
+    await pool.execute(
     `
-    INSERT INTO user_profile (user_id, timezone)
-    VALUES (UNHEX(REPLACE(?, '-', '')), ?)
-    ON DUPLICATE KEY UPDATE timezone = VALUES(timezone)
+    UPDATE user_profile SET timezone = ?
+    WHERE user_id =  UNHEX(REPLACE(?, '-', ''))
     `,
-    [userId, timezone ?? '']
+    [ timezone, userId]
   )
   const p = await readProfile(pool, userId)
   if (!p) throw new Error('profile_not_found_after_update')
