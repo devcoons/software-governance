@@ -40,7 +40,7 @@ export default function LoginForm() {
         return
       }
       if (data.force_password_change) {
-        router.replace('/auth/password-change')
+        router.replace('/password-change')
       } else {
         router.replace(next)
       }

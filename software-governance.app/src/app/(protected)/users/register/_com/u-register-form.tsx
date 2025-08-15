@@ -2,12 +2,12 @@
 
 import { useRef, useState } from 'react';
 
-type CreateUserOk = { ok: true; email?: string; tempPassword: string };
+type CreateUserOk = { ok: true; password: string };
 type CreateUserErr = { ok: false; error?: string };
 type CreateUserResponse = CreateUserOk | CreateUserErr;
 
 function isCreateUserOk(x: unknown): x is CreateUserOk {
-  return !!x && typeof x === 'object' && (x as any).ok === true && typeof (x as any).tempPassword === 'string';
+  return !!x && typeof x === 'object' && (x as any).ok === true && typeof (x as any).password === 'string';
 }
 
 export default function RegisterForm() {
@@ -58,7 +58,7 @@ export default function RegisterForm() {
         return;
       }
 
-      setTempInfo({ email: data.email ?? email, password: data.tempPassword });
+      setTempInfo({ email: email, password: data.password });
       dialogRef.current?.showModal?.();
       form.reset();
     } catch (err: any) {

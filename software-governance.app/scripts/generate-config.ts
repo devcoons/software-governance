@@ -181,7 +181,7 @@ const ALLOW_PREFIXES = [
   '/api/auth/',
   '/maintenance',
   '/login',
-  '/auth/password-change',
+  '/password-change',
   '/auth/forgot',
 ]
 

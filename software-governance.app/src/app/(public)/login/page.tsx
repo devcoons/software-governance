@@ -18,7 +18,7 @@ export default async function Page() {
   const sess = await readSession()
   if (sess) {
     if (sess.claims.force_password_change) {
-      redirect('/auth/password-change')
+      redirect('/password-change')
     } else {
       redirect('/dashboard')
     }

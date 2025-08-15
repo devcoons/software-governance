@@ -31,7 +31,7 @@ export default async function Page() {
   if (healthy) {
     const sess = await readSession()
     if (!sess) redirect('/login')
-    if (sess.claims.force_password_change) redirect('/auth/password-change')
+    if (sess.claims.force_password_change) redirect('/password-change')
     redirect('/dashboard')
   }
   const HealthPoller = (await import('./_com/polling')).default;

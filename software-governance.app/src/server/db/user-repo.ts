@@ -4,6 +4,7 @@
 
 import type { RowDataPacket, PoolConnection, ResultSetHeader } from 'mysql2/promise'
 import { query, exec, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
+import { randomUUID } from 'node:crypto'
 
 /* ---------------------------------------------------------------------- */
 
@@ -332,4 +333,47 @@ export async function setUserRole(userId: string, roles: string[]): Promise<void
     `,
     [JSON.stringify(roles), userId]
   )
+}
+
+/* ---------------------------------------------------------------------- */
+
+export async function createUserWithTempPassword(
+  email: string,
+  passwordHash: string,
+  roles: string[] = ['user'],
+): Promise<string> {
+  const id = randomUUID();
+  const username = email; // deterministic, satisfies UNIQUE(username)
+
+  await withTransaction(async (conn) => {
+    await conn.execute(
+      `
+      INSERT INTO users (
+        id, email, username, password,
+        is_active, roles, permissions,
+        totp_enabled, force_password_change,
+        temp_password_issued_at, temp_password_used_at,
+        created_at, updated_at
+      )
+      VALUES (
+        UNHEX(REPLACE(?, '-', '')), ?, ?, ?,
+        1, ?, '[]',
+        0, 1,
+        NOW(), NULL,
+        NOW(), NOW()
+      )
+      `,
+      [id, email, username, passwordHash, JSON.stringify(roles)]
+    );
+
+    await conn.execute(
+      `
+      INSERT INTO user_profile (user_id, first_name, last_name, phone_number, timezone)
+      VALUES (UNHEX(REPLACE(?, '-', '')), NULL, NULL, NULL, NULL)
+      `,
+      [id]
+    );
+  });
+
+  return id;
 }
