@@ -142,7 +142,7 @@ function collectValues() {
   const SESSION_COOKIE = process.env.SESSION_COOKIE || (IS_PROD ? '__Host-sid' : 'sid')
   const REFRESH_COOKIE = process.env.REFRESH_COOKIE || (IS_PROD ? '__Host-rid' : 'rid')
 
-  const SESSION_TTL_SECONDS = asInt('SESSION_TTL_SECONDS', process.env.SESSION_TTL_SECONDS ?? 1800, 1800, 60)
+  const SESSION_TTL_SECONDS = asInt('SESSION_TTL_SECONDS', process.env.SESSION_TTL_SECONDS ?? 30, 30, 30)
   const REFRESH_IDLE_TTL_SECONDS = asInt('REFRESH_IDLE_TTL_SECONDS', process.env.REFRESH_IDLE_TTL_SECONDS ?? 2592000, 2592000, 3600)
   const REFRESH_ABSOLUTE_TTL_SECONDS = asInt('REFRESH_ABSOLUTE_TTL_SECONDS', process.env.REFRESH_ABSOLUTE_TTL_SECONDS ?? 7776000, 7776000, 86400)
 
@@ -181,18 +181,20 @@ const ALLOW_PREFIXES = [
   '/api/auth/',
   '/maintenance',
   '/login',
+  '/users',
   '/password-change',
-  '/auth/forgot',
+  '/forgot-password',
 ]
 
   const PROTECTED_PREFIXES = [
     '/dashboard',
     '/users',
+    '/registry',
     '/software',
     '/approvals',
     '/audit',
     '/me',
-    '/logout',
+    '/auth/logout',
   ]
 
   return {
