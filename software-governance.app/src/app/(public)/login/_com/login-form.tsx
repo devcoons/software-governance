@@ -10,8 +10,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 /* ---------------------------------------------------------------------- */
 
 export default function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@mail.com');
+  const [password, setPassword] = useState('A12345!!!!!')
   const [remember, setRemember] = useState(true)
 
   const [error, setError] = useState<string | null>(null)

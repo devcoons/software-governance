@@ -15,12 +15,14 @@ const g = globalThis as any
 
 function choose(): SessionStore {
   const force = String(process.env.SESSION_STORE || '').trim().toLowerCase()
+  console.log("Session Store is: ("+!force+")redis  - ("+force+")memory")
   if (force === 'memory') return memoryStore
 
   const hasRedis =
     Boolean(config.REDIS_HOST) &&
     Number(config.REDIS_PORT) > 0
 
+  console.log("Session Store is: ("+hasRedis+")redis  - ("+!hasRedis+")memory")
   if (hasRedis) return redisStore
   return memoryStore
 }

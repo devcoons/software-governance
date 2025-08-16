@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     try {
         body = BodySchema.parse(await req.json())
     } catch {
-        return jsonErr('bad_request', 400)
+        return jsonErr('bad_request',null, 400)
     }
 
     const result = await login(req, {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.ok) {
-        return jsonErr(result.error ?? 'invalid_credentials', 401)
+        return jsonErr(result.error ?? 'invalid_credentials',null, 401)
     }
 
     const res = jsonOk({ force_password_change: result.forcePasswordChange })

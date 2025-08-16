@@ -11,6 +11,7 @@ import { completeForcedPasswordChange, findUserById } from '@/server/db/user-rep
 import { newSession } from '@/server/session/utils'
 import config from '@/config'
 import { jsonErr, jsonOk } from '@/server/http/api-reponse'
+import { getSessionAndRefresh } from '@/server/auth/ctx'
 
 /* ---------------------------------------------------------------------- */
 
@@ -26,32 +27,39 @@ const BodySchema = z.object({
 /* ---------------------------------------------------------------------- */
 
 export async function POST(req: NextRequest) {
+   
+    
+
+
+
     let body: z.infer<typeof BodySchema>
     try {
         body = BodySchema.parse(await req.json())
     } catch {
-        return jsonErr('bad_request', 400)
+        return jsonErr('bad_request',null, 400)
     }
 
     const newPassword = String(body.newPassword || '')
     const confirm = String(body.confirm || '')
     if (!newPassword || newPassword !== confirm) {
-        return jsonErr('password_mismatch', 400)
+        return jsonErr('password_mismatch',null, 400)
     }
 
     const sid = readSid(req)
-    if (!sid) return jsonErr('no_session', 401)
+    if (!sid) return jsonErr('no_session',null, 401)
 
-    const sess = await store.getSession(sid)
-    if (!sess) return jsonErr('invalid_session', 401)
+    const sessionGuardian = await getSessionAndRefresh(req)
+    if (!sessionGuardian) return jsonErr('generic_issue',sessionGuardian, 401)
+    const sess = sessionGuardian.session
+    if (!sess) return jsonErr('invalid_session',sessionGuardian, 401)
 
     if (!sess.claims.force_password_change) {
-        return jsonErr('not_forced', 400)
+        return jsonErr('not_forced',sessionGuardian, 400)
     }
 
     const user = await findUserById(sess.user_id)
     if (!user || !user.is_active) {
-        return jsonErr('user_not_active', 401)
+        return jsonErr('user_not_active',sessionGuardian, 401)
     }
 
     const hash = await hashPassword(newPassword)
@@ -70,7 +78,7 @@ export async function POST(req: NextRequest) {
     await store.deleteSession(sid)
     await store.putSession(next)
 
-    const res = jsonOk({})
+    const res = jsonOk({},sessionGuardian)
 
     const sidOnly = buildAuthCookies({ sid: next.sid, rid: 'ignore', rememberMe: false })
                     .filter(c => c.name === config.SESSION_COOKIE)

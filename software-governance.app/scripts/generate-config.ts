@@ -178,10 +178,8 @@ function collectValues() {
   const ALLOW_EXACT = ['/', '/favicon.ico']
 const ALLOW_PREFIXES = [
   '/api/health/',
-  '/api/auth/',
   '/maintenance',
   '/login',
-  '/users',
   '/password-change',
   '/forgot-password',
 ]

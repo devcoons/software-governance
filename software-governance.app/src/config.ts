@@ -44,7 +44,7 @@ const config: ConfigFlat = Object.freeze({
   BIND_UA: true,
   BIND_IP: true,
   ALLOW_EXACT: ["/","/favicon.ico"],
-  ALLOW_PREFIXES: ["/api/health/","/api/auth/","/maintenance","/login","/users","/password-change","/forgot-password"],
+  ALLOW_PREFIXES: ["/api/health/","/maintenance","/login","/password-change","/forgot-password"],
   PROTECTED_PREFIXES: ["/dashboard","/users","/registry","/software","/approvals","/audit","/me","/auth/logout"],
   PASSWORD_MIN_SIZE: 10,
   FORGOT_PASS_RATE_LIMIT: 10,
