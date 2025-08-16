@@ -108,10 +108,22 @@ export async function refresh(req: NextRequest, rid: string): Promise<RefreshRes
     ipHint: rec.ip_hint,
   })
 
-  const nextSid = newSession(rec.user_id, claims)
+    const nextSid = newSession(rec.user_id, claims)
 
-  const rotated = await store.rotateRefresh(rec.rid, nextRid)
-  if (!rotated.ok) return { ok: false, error: 'rotation_failed' }
+    const rotated = await store.rotateRefresh(rec.rid, nextRid)
+    if (!rotated.ok) {
+    const code = (rotated as any).code
+    if (code === -2) {
+      // RID reused → revoke all refresh + sessions for this user (family kill)
+      await store.revokeUserRefresh(rec.user_id).catch(() => {})
+      await store.revokeUserSessions(rec.user_id).catch(() => {})
+      return { ok: false, error: 'reused' }          // bridge will clear cookies
+    }
+    if (code === -3) return { ok: false, error: 'ua_mismatch' }
+    if (code === -4) return { ok: false, error: 'expired' }
+    if (code === -1) return { ok: false, error: 'not_found' }
+    return { ok: false, error: 'rotation_failed' }
+  }
 
   await store.putSession(nextSid)
 

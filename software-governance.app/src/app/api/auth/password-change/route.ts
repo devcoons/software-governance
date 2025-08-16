@@ -4,7 +4,9 @@
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { readSid, applyCookies, buildAuthCookies } from '@/server/http/cookie'
+import { readSid, applyCookies, buildAuthCookies, readRid } from '@/server/http/cookie'
+import { newRefresh } from '@/server/session/utils'
+import { getUaHash, getIpHint } from '@/server/auth/ua-ip'
 import { store } from '@/server/session/provider'
 import { hashPassword } from '@/server/crypto/password'
 import { completeForcedPasswordChange, findUserById } from '@/server/db/user-repo'

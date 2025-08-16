@@ -8,7 +8,9 @@ import { findUserById, updateUserPassword } from '@/server/db/user-repo'
 import { verifyPassword, hashPassword } from '@/server/crypto/password'
 import { store } from '@/server/session/provider'
 import { newSession } from '@/server/session/utils'
-import { applyCookies, buildAuthCookies } from '@/server/http/cookie'
+import { applyCookies, buildAuthCookies, readRid } from '@/server/http/cookie'
+import { newRefresh } from '@/server/session/utils'
+import { getUaHash, getIpHint } from '@/server/auth/ua-ip'
 import config from '@/config'
 
 /* ---------------------------------------------------------------------- */
@@ -52,6 +54,17 @@ export async function POST(req: NextRequest) {
   const hash = await hashPassword(newPassword)
 
   await updateUserPassword(user.id, hash)
+  // Revoke all refresh tokens; mint a fresh one for current device
+  const oldRid = readRid(req)
+  const oldRec = oldRid ? await store.getRefresh(oldRid) : null
+  await store.revokeUserRefresh(user.id)
+  const freshRid = newRefresh({
+    userId: user.id,
+    rememberMe: Boolean(oldRec?.remember_me),
+    uaHash: getUaHash(req),
+    ipHint: getIpHint(req),
+  })
+  await store.putRefresh(freshRid)
 
   const claims = { ...sess.claims, force_password_change: false }
   const next = newSession(user.id, claims)
@@ -59,11 +72,7 @@ export async function POST(req: NextRequest) {
   await store.putSession(next)
   await store.revokeUserSessions(user.id, next.sid)
 
-  const res = NextResponse.json({ ok: true })
-
-  const sidOnly = buildAuthCookies({ sid: next.sid, rid: 'ignore', rememberMe: false })
-    .filter(c => c.name === config.SESSION_COOKIE)
-  applyCookies(res, sidOnly)
-
-  return res
+    const res = NextResponse.json({ ok: true })
+    applyCookies(res, buildAuthCookies({ sid: next.sid, rid: freshRid.rid, rememberMe: Boolean(oldRec?.remember_me) }))
+    return res
 }

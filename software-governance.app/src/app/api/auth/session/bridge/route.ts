@@ -25,6 +25,7 @@ const DISCONNECT_ERRORS = new Set([
   'reused',
   'not_found',
   'expired',
+  'ua_mismatch'
 ])
 
 /* Clear SID/RID cookies and 303 to /login?next=... */
