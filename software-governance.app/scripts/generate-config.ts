@@ -176,6 +176,8 @@ function collectValues() {
   const BIND_UA = asBool(process.env.BIND_UA, true)
   const BIND_IP = asBool(process.env.BIND_IP, true)
 
+  const DEBUGGING = asBool(process.env.DEBUGGING, true)
+
   const ALLOW_EXACT = ['/', '/favicon.ico']
 const ALLOW_PREFIXES = [
   '/api/health/',
@@ -238,7 +240,8 @@ const ALLOW_PREFIXES = [
     PROTECTED_PREFIXES,
     PASSWORD_MIN_SIZE,
     FORGOT_PASS_RATE_LIMIT,
-    USER_REFRESH_ZSET_PREFIX
+    USER_REFRESH_ZSET_PREFIX,
+    DEBUGGING,
   }
 }
 
@@ -297,7 +300,7 @@ const config: ConfigFlat = Object.freeze({
   PROTECTED_PREFIXES: ${JSON.stringify(v.PROTECTED_PREFIXES)},
   PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
   FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
-  
+  DEBUGGING: ${v.DEBUGGING},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -363,6 +366,7 @@ const config: ConfigFlat = Object.freeze({
   PROTECTED_PREFIXES: ${JSON.stringify(v.PROTECTED_PREFIXES)},
   PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
   FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
+  DEBUGGING: ${v.DEBUGGING},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -435,6 +439,7 @@ export type ConfigFlat = Readonly<{
   PROTECTED_PREFIXES: string[]
   PASSWORD_MIN_SIZE: number
   FORGOT_PASS_RATE_LIMIT: number
+  DEBUGGING: boolean
 }>
 `
   fs.mkdirSync(path.dirname(outFile), { recursive: true })

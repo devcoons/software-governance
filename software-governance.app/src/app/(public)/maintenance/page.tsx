@@ -4,6 +4,7 @@
 
 import { redirect } from 'next/navigation'
 import { read as readSession } from '@/server/auth/reader'
+import { Suspense } from 'react';
 
 
 /* ---------------------------------------------------------------------- */
@@ -35,7 +36,7 @@ export default async function Page() {
     redirect('/dashboard')
   }
   const HealthPoller = (await import('./_com/polling')).default;
-  return <HealthPoller />;
+  return  <Suspense><HealthPoller /></Suspense>;
   
 }
 

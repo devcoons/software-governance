@@ -49,6 +49,7 @@ const config: ConfigFlat = Object.freeze({
   PROTECTED_PREFIXES: ["/dashboard","/users","/registry","/software","/approvals","/audit","/me","/auth/logout"],
   PASSWORD_MIN_SIZE: 10,
   FORGOT_PASS_RATE_LIMIT: 10,
+  DEBUGGING: true,
 })
 
 /* ---------------------------------------------------------------------- */

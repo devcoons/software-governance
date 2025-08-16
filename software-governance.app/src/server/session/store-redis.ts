@@ -12,14 +12,21 @@ type Client = Redis
 
 /* ---------------------------------------------------------------------- */
 
-const g = globalThis as any
-let client: Client | null = g.__SESSION_REDIS__ || null
+type GlobalCache = {
+  __SESSION_REDIS__?: Client | null;
+  __SESSION_ROTATE_SHA__?: string | null;
+  __SESSION_REDIS_LAST_ERR__?: string | null;
+};
+
+const g = globalThis as typeof globalThis & GlobalCache;
+
+let client: Client | null = g.__SESSION_REDIS__ ?? null;
 
 /* Cache for rotate script SHA (persist across HMR via global) */
-let rotateSha: string | null = g.__SESSION_ROTATE_SHA__ || null
+let rotateSha: string | null = g.__SESSION_ROTATE_SHA__ ?? null;
 
 /* Track last error for health reporting */
-let lastRedisError: string | null = g.__SESSION_REDIS_LAST_ERR__ || null
+let lastRedisError: string | null = g.__SESSION_REDIS_LAST_ERR__ ?? null;
 
 /* ---------------------------------------------------------------------- */
 /* Key builders (match generated config) */
@@ -190,12 +197,14 @@ return { 1, userId, remember_me, absoluteExpAt }
 /* ---------------------------------------------------------------------- */
 
 async function ensureRotateSha(c: Client): Promise<string> {
-    if (rotateSha) return rotateSha
-    if (c.status === 'wait' || c.status === 'end') await c.connect()
-    const sha = await (c as any).script('load', ROTATE_LUA)
-    rotateSha = sha
-    g.__SESSION_ROTATE_SHA__ = sha
-    return sha
+  if (rotateSha) return rotateSha;
+  if (c.status === "wait" || c.status === "end") await c.connect();
+  const sha = await (c as Client & {
+    script(command: "load", script: string): Promise<string>;
+  }).script("load", ROTATE_LUA);
+  rotateSha = sha;
+  g.__SESSION_ROTATE_SHA__ = sha;
+  return sha;
 }
 
 /* ---------------------------------------------------------------------- */
