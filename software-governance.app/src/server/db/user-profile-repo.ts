@@ -4,6 +4,7 @@
 
 import type { RowDataPacket, PoolConnection } from 'mysql2/promise'
 import { query, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
+import { use } from 'react'
 
 /* ---------------------------------------------------------------------- */
 
@@ -60,8 +61,10 @@ async function readProfile(userId: string, conn?: PoolConnection): Promise<DbUse
 
 export async function getUserProfileById(userId: string): Promise<DbUserProfile> {
   return withTransaction(async (conn) => {
+    console.log("[USR-PRF-DB] Trying to retrieve data for: "+userId)
     const existing = await readProfile(userId, conn)
-    if (existing) return existing
+    if (existing) 
+        return existing
     await conn.execute(
       `
       INSERT INTO user_profile (user_id, first_name, last_name, phone_number, timezone)

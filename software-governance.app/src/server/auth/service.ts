@@ -5,7 +5,7 @@
 import { NextRequest } from 'next/server'
 import config from '@/config'
 import { store } from '@/server/session/provider'
-import { findUserByLogin, findUserById, burnTempPassword } from '@/server/db/user-repo'
+import { findUserByLogin, findUserById, burnTempPassword, updateLastLogin } from '@/server/db/user-repo'
 import { verifyPassword, hashPassword } from '@/server/crypto/password'
 import { claimsFromDbUser } from '@/server/session/claims'
 import { newSession, newRefresh } from '@/server/session/utils'
@@ -61,6 +61,8 @@ export async function login(req: NextRequest, input: LoginInput): Promise<LoginR
 
   await store.putSession(sidRec)
   await store.putRefresh(ridRec)
+
+  await updateLastLogin(user.id)
 
   return {
     ok: true,

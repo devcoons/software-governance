@@ -204,6 +204,21 @@ export async function enableTotp(userId: string): Promise<void> {
 
 /* ---------------------------------------------------------------------- */
 
+export async function updateLastLogin(userId: string|undefined): Promise<void> {
+    console.log("[USR-DB] Update Last login date for user: "+userId)
+    if(!userId) return
+  await exec(
+    `
+    UPDATE users
+    SET last_login_at = NOW()
+    WHERE id = UNHEX(REPLACE(?, '-', ''))
+    `,
+    [userId]
+  )
+}
+
+/* ---------------------------------------------------------------------- */
+
 type TotpInfoRow = RowDataPacket & {
   enabled: number
   secret: string | null

@@ -13,6 +13,8 @@ import type { SessionRecord } from '@/server/session/store.i'
 import app from '@/config'                           /* cookie names, TTLs, etc. */
 import { refresh, refresh as refreshSession } from '@/server/auth/service'
 import { store } from '../session/provider'
+import { redirect } from 'next/navigation'
+
 
 
 /* ---------------------------------------------------------------------- */
@@ -21,6 +23,12 @@ export async function getSession(req?: NextRequest) {
   return readSession(req)
 }
 
+/* ---------------------------------------------------------------------- */
+
+export async function getSessionOrRedirect(req?: NextRequest) {
+    const sess = readSession(req)
+    return sess ?? redirect('/login')
+}
 /* ---------------------------------------------------------------------- */
 
 export function setAuthCookies(res: NextResponse, args: { sid: string; rid: string; rememberMe: boolean }) {

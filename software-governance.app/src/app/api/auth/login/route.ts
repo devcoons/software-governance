@@ -38,7 +38,6 @@ export async function POST(req: NextRequest) {
 
     if (!result.ok) {
         const res = jsonErr(result.error ?? 'invalid_credentials',null, 401)
-
         return 
     }
 

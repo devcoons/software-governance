@@ -7,6 +7,8 @@ import { refresh } from '@/server/auth/service'
 import { readRid, applyCookies, buildAuthCookies } from '@/server/http/cookie'
 import { sanitizeNext } from '@/server/http/next'
 import config from '@/config' // ⬅️ added
+import { updateLastLogin } from '@/server/db/user-repo'
+import { getSession } from '@/server/auth/ctx'
 
 /* ---------------------------------------------------------------------- */
 
@@ -111,6 +113,8 @@ async function handle(req: NextRequest): Promise<Response> {
       rememberMe: result.rememberMe === true,
     }),
   )
+
+
   res.headers.set('Cache-Control', 'no-store')
   res.headers.set('x-trace-id', trace)
   res.headers.set('Pragma', 'no-cache')
