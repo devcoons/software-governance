@@ -150,6 +150,7 @@ function collectValues() {
   const REFRESH_PREFIX = process.env.REFRESH_PREFIX || 'rsh:'
   const USER_SESSIONS_PREFIX = process.env.USER_SESSIONS_PREFIX || 'user:sessions:'
   const USER_REFRESH_PREFIX = process.env.USER_REFRESH_PREFIX || 'user:refresh:'
+    const USER_REFRESH_ZSET_PREFIX = process.env.USER_REFRESH_ZSET_PREFIX || 'user:refreshz:'
 
   const ARGON2_MEMORY_KIB = asInt('ARGON2_MEMORY_KIB', process.env.ARGON2_MEMORY_KIB ?? 19456, 19456, 4096)
   const ARGON2_TIME_COST = asInt('ARGON2_TIME_COST', process.env.ARGON2_TIME_COST ?? 2, 2, 1)
@@ -237,6 +238,7 @@ const ALLOW_PREFIXES = [
     PROTECTED_PREFIXES,
     PASSWORD_MIN_SIZE,
     FORGOT_PASS_RATE_LIMIT,
+    USER_REFRESH_ZSET_PREFIX
   }
 }
 
@@ -272,6 +274,7 @@ const config: ConfigFlat = Object.freeze({
   REFRESH_ABSOLUTE_TTL_SECONDS: ${v.REFRESH_ABSOLUTE_TTL_SECONDS},
   SESSION_PREFIX: \`${esc(v.SESSION_PREFIX)}\`,
   REFRESH_PREFIX: \`${esc(v.REFRESH_PREFIX)}\`,
+  USER_REFRESH_ZSET_PREFIX: \`${esc(v.USER_REFRESH_ZSET_PREFIX)}\`,
   USER_SESSIONS_PREFIX: \`${esc(v.USER_SESSIONS_PREFIX)}\`,
   USER_REFRESH_PREFIX: \`${esc(v.USER_REFRESH_PREFIX)}\`,
   ARGON2_MEMORY_KIB: ${v.ARGON2_MEMORY_KIB},
@@ -294,6 +297,7 @@ const config: ConfigFlat = Object.freeze({
   PROTECTED_PREFIXES: ${JSON.stringify(v.PROTECTED_PREFIXES)},
   PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
   FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
+  
 })
 
 /* ---------------------------------------------------------------------- */
@@ -336,6 +340,7 @@ const config: ConfigFlat = Object.freeze({
   REFRESH_ABSOLUTE_TTL_SECONDS: ${v.REFRESH_ABSOLUTE_TTL_SECONDS},
   SESSION_PREFIX: \`${esc(v.SESSION_PREFIX)}\`,
   REFRESH_PREFIX: \`${esc(v.REFRESH_PREFIX)}\`,
+  USER_REFRESH_ZSET_PREFIX: \`${esc(v.USER_REFRESH_ZSET_PREFIX)}\`,
   USER_SESSIONS_PREFIX: \`${esc(v.USER_SESSIONS_PREFIX)}\`,
   USER_REFRESH_PREFIX: \`${esc(v.USER_REFRESH_PREFIX)}\`,
   ARGON2_MEMORY_KIB: ${v.ARGON2_MEMORY_KIB},
@@ -407,6 +412,7 @@ export type ConfigFlat = Readonly<{
   REFRESH_ABSOLUTE_TTL_SECONDS: number
   SESSION_PREFIX: string
   REFRESH_PREFIX: string
+  USER_REFRESH_ZSET_PREFIX: string
   USER_SESSIONS_PREFIX: string
   USER_REFRESH_PREFIX: string
   ARGON2_MEMORY_KIB: number

@@ -22,6 +22,7 @@ export type ConfigFlat = Readonly<{
   REFRESH_ABSOLUTE_TTL_SECONDS: number
   SESSION_PREFIX: string
   REFRESH_PREFIX: string
+  USER_REFRESH_ZSET_PREFIX: string
   USER_SESSIONS_PREFIX: string
   USER_REFRESH_PREFIX: string
   ARGON2_MEMORY_KIB: number

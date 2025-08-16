@@ -26,6 +26,7 @@ const config: ConfigFlat = Object.freeze({
   REFRESH_ABSOLUTE_TTL_SECONDS: 7776000,
   SESSION_PREFIX: `sess:`,
   REFRESH_PREFIX: `rsh:`,
+  USER_REFRESH_ZSET_PREFIX: `user:refreshz:`,
   USER_SESSIONS_PREFIX: `user:sessions:`,
   USER_REFRESH_PREFIX: `user:refresh:`,
   ARGON2_MEMORY_KIB: 19456,
@@ -48,6 +49,7 @@ const config: ConfigFlat = Object.freeze({
   PROTECTED_PREFIXES: ["/dashboard","/users","/registry","/software","/approvals","/audit","/me","/auth/logout"],
   PASSWORD_MIN_SIZE: 10,
   FORGOT_PASS_RATE_LIMIT: 10,
+  
 })
 
 /* ---------------------------------------------------------------------- */

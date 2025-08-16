@@ -15,7 +15,7 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
     const r = await logout({ sid: readSid(req), rid: readRid(req) })
-    const res = r.ok ? jsonOk({}) : jsonErr('logout_failed',null, 401)
+    const res = r.ok ? jsonOk({}) : jsonErr('logout_failed',null, 401,true)
     applyCookies(res, buildClearAuthCookies())
     return res
 }

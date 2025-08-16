@@ -30,6 +30,9 @@ async function handle(req: NextRequest): Promise<Response> {
         console.log('[BRIDGE]', trace, 'No RID → redirect to login')
         const r = NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, req.url), 303)
         r.headers.set('x-trace-id', trace)
+        r.headers.set('Pragma', 'no-cache')   
+        r.headers.set('Expires', '0')          
+        r.headers.set('Vary', 'Cookie')  
         return r
     }
 
@@ -43,6 +46,9 @@ async function handle(req: NextRequest): Promise<Response> {
         console.log('[BRIDGE]', trace, 'Refresh failed → redirect back to next (race-safe)')
         const r = NextResponse.redirect(new URL(next, req.url), 303)
         r.headers.set('x-trace-id', trace)
+        r.headers.set('Pragma', 'no-cache')   
+        r.headers.set('Expires', '0')          
+        r.headers.set('Vary', 'Cookie')   
         return r
     }
 
@@ -58,6 +64,10 @@ async function handle(req: NextRequest): Promise<Response> {
     )
     res.headers.set('Cache-Control', 'no-store')
     res.headers.set('x-trace-id', trace)
+
+    res.headers.set('Pragma', 'no-cache')   
+    res.headers.set('Expires', '0')          
+    res.headers.set('Vary', 'Cookie')      
     return res
 }
 

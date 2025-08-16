@@ -37,10 +37,12 @@ export async function POST(req: NextRequest) {
     })
 
     if (!result.ok) {
-        return jsonErr(result.error ?? 'invalid_credentials',null, 401)
+        const res = jsonErr(result.error ?? 'invalid_credentials',null, 401)
+
+        return 
     }
 
-    const res = jsonOk({ force_password_change: result.forcePasswordChange })
+    const res = jsonOk({ force_password_change: result.forcePasswordChange },null,200,true)
     applyCookies(res, buildAuthCookies({ sid: result.sid, rid: result.rid, rememberMe: result.rememberMe }))
     return res
 }
