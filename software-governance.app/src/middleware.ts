@@ -10,7 +10,7 @@ import { sanitizeNext } from './server/http/next'
 
 type HealthCache = { ts: number; ok: boolean }
 const g = globalThis as any
-let edgeHealthCache: HealthCache | null = g.__EDGE_HEALTH__ || null
+let edgeHealthCache: HealthCache | null = g.__EDGE_HEALTH__ ?? null
 
 /* ---------------------------------------------------------------------- */
 
@@ -99,7 +99,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // Check session cookie
-    const sid = req.cookies.get(appConfig.SESSION_COOKIE)?.value || ''
+    const sid = req.cookies.get(appConfig.SESSION_COOKIE)?.value ?? ''
     console.log('[MW] SID cookie:', sid ? 'present' : 'missing')
     if (sid) {
         console.log('[MW] Valid SID, proceeding')
@@ -107,7 +107,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // Check refresh cookie
-    const rid = req.cookies.get(appConfig.REFRESH_COOKIE)?.value || ''
+    const rid = req.cookies.get(appConfig.REFRESH_COOKIE)?.value ?? ''
     console.log('[MW] RID cookie:', rid ? 'present' : 'missing')
 
     const next = sanitizeNext(req.nextUrl.pathname + req.nextUrl.search)

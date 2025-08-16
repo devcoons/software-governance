@@ -124,10 +124,10 @@ export default function UsersTable({
   const [query, setQuery] = useState(initialQ);
 
   const [sortKey, setSortKey] = useState<SortKey>(
-    (params.get('sort') as SortKey) || 'created'
+    (params.get('sort') as SortKey) ?? 'created'
   );
   const [sortDir, setSortDir] = useState<SortDir>(
-    (params.get('dir') as SortDir) || 'desc'
+    (params.get('dir') as SortDir) ?? 'desc'
   );
   const [page, setPage] = useState(Number(params.get('page') || 1));
 
@@ -274,7 +274,7 @@ const closePasswordModalAndRefresh = () => {
           revert();
           setRoleErrors((prev) => ({
             ...prev,
-            [userId]: err?.message || 'Failed to update role',
+            [userId]: err?.message ?? 'Failed to update role',
           }));
           setTimeout(() => {
             setRoleErrors((prev) => {

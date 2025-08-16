@@ -31,7 +31,7 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         return
       }
 
-      const otpauthUrl = String(data.otpauthUrl || '')
+      const otpauthUrl = String(data.otpauthUrl ?? '')
       let dataUrl: string | null = null
       try {
         const { toDataURL } = await import('qrcode')
@@ -78,7 +78,7 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         setEnabled(true)
         setStatus('✅ TOTP verified.')
       } else {
-        const msg = result?.error || 'Verification failed'
+        const msg = result?.error ?? 'Verification failed'
         setStatus(`❌ ${msg}`)
       }
     } catch {

@@ -17,7 +17,7 @@ export default function NavLinksClient({
   asList?: boolean;                 // mobile mode renders <li>
   nestedUsersSubpages?: Subpage[];  // for "Users & Roles" (role-aware)
 }) {
-  const pathname = usePathname() || '/';
+  const pathname = usePathname() ?? '/';
   const isActive = (href: Route) =>
     pathname === href || pathname.startsWith((href as string) + '/');
 

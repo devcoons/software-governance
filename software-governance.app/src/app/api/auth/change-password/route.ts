@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 })
   }
 
-  const currentPassword = String(body.currentPassword || '')
-  const newPassword = String(body.newPassword || '')
+  const currentPassword = String(body.currentPassword ?? '')
+  const newPassword = String(body.newPassword ?? '')
 
   if (!currentPassword || !newPassword) {
     return NextResponse.json({ ok: false, error: 'missing_params' }, { status: 400 })

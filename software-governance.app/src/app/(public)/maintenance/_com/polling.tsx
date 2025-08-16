@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 export default function HealthPoller() {
   const router = useRouter()
   const qs = useSearchParams()
-  const next = qs.get('next') || '/'
+  const next = qs.get('next') ?? '/'
 
   useEffect(() => {
     let stop = false

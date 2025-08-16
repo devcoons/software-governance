@@ -22,7 +22,7 @@ export default function ResetPasswordButton({
           `Temporary password for ${email}:\n\n${d.tempPassword}\n\nThe user will be forced to change it at next login.`
         );
       } else {
-        alert(d?.error || 'Failed to reset password');
+        alert(d?.error ?? 'Failed to reset password');
       }
     } finally {
       setBusy(false);

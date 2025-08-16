@@ -54,8 +54,8 @@ function getClient(): Client {
     client = new Redis({
         host: config.REDIS_HOST,
         port: Number(config.REDIS_PORT),
-        username: config.REDIS_USERNAME || undefined,
-        password: config.REDIS_PASSWORD || undefined,
+        username: config.REDIS_USERNAME ?? undefined,
+        password: config.REDIS_PASSWORD ?? undefined,
         // If you terminate TLS at Redis, expose a REDIS_TLS=1 and set tls: {}
         // tls: config.REDIS_TLS ? {} as any : undefined,
         lazyConnect: true,
@@ -64,7 +64,7 @@ function getClient(): Client {
         connectionName: 'sgov-session',
     })
     client.on('error', (err) => {
-        lastRedisError = String(err?.message || err || 'unknown')
+        lastRedisError = String(err?.message ?? err ?? 'unknown')
         g.__SESSION_REDIS_LAST_ERR__ = lastRedisError
     })
     g.__SESSION_REDIS__ = client
@@ -287,8 +287,8 @@ export const redisStore: SessionStore = {
             rid,
             user_id: vals.user_id,
             remember_me: toBool(vals.remember_me),
-            ua_hash: vals.ua_hash || '',
-            ip_hint: vals.ip_hint || '',
+            ua_hash: vals.ua_hash ?? '',
+            ip_hint: vals.ip_hint ?? '',
             created_at: toNum(vals.created_at),
             last_used_at: toNum(vals.last_used_at),
             absolute_exp_at: toNum(vals.absolute_exp_at),
@@ -305,8 +305,8 @@ export const redisStore: SessionStore = {
         const h: Record<string, string | number> = {
             user_id: rec.user_id,
             remember_me: rec.remember_me ? 1 : 0,
-            ua_hash: rec.ua_hash || '',
-            ip_hint: rec.ip_hint || '',
+            ua_hash: rec.ua_hash ?? '',
+            ip_hint: rec.ip_hint ?? '',
             created_at: rec.created_at,
             last_used_at: rec.last_used_at,
             absolute_exp_at: rec.absolute_exp_at,
@@ -338,7 +338,7 @@ export const redisStore: SessionStore = {
             String(now),
             String(Number(config.REFRESH_IDLE_TTL_SECONDS)),
             config.BIND_UA ? '1' : '0',
-            next.ua_hash || '',
+            next.ua_hash ?? '',
             next.rid,
             String(900), // poison tombstone TTL in seconds (15 min)
             String(Number(config.MAX_REFRESH_PER_USER) || 0),
@@ -348,7 +348,7 @@ export const redisStore: SessionStore = {
             result = await (c as any).evalsha(sha, keys.length, ...keys, ...args)
         } catch (e: any) {
             // In case of a cache miss after Redis restart, load again and retry once
-            if (String(e?.message || e).includes('NOSCRIPT')) {
+            if (String(e?.message ?? e).includes('NOSCRIPT')) {
                 rotateSha = null
                 const freshSha = await ensureRotateSha(c)
                 result = await (c as any).evalsha(freshSha, keys.length, ...keys, ...args)

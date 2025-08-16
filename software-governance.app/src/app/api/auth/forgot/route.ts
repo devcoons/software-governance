@@ -28,9 +28,8 @@ export async function POST(req: NextRequest) {
 
   // Forward a minimal IP hint if available (optional)
   const ipHint =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
- 
-    (req as any).ip ||
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    (req as any).ip ??
     undefined;
 
   const res = await resetPasswordWithTotp(

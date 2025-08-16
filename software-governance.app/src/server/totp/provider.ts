@@ -52,7 +52,7 @@ export async function setupTotp(
   opts?: { session?: SessionRecord }
 ): Promise<TotpSetupResult> {
   const user = await findUserById(accountId)
-  const account = user?.email || user?.username || accountId
+  const account = user?.email ?? user?.username ?? accountId
 
   const secret = authenticator.generateSecret()
 
@@ -84,7 +84,7 @@ export async function verifyTotpPin(userId: string, pin: string): Promise<TotpVe
   if (!info.enabled) return { ok: false, error: 'totp_not_enabled' }
   if (!info.secret) return { ok: false, error: 'no_secret' }
 
-  const ok = checkCode(info.secret, String(pin || '').trim())
+  const ok = checkCode(info.secret, String(pin ?? '').trim())
   if (!ok) return { ok: false, error: 'invalid_code' }
 
   return { ok: true }

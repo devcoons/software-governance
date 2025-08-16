@@ -19,7 +19,7 @@ export const passwordSchema = z.string().min(10).refine((s) => {
 
 export function validatePasswordStrength(pw: string) {
   const r = passwordSchema.safeParse(pw);
-  return r.success ? { ok: true as const } : { ok: false as const, error: r.error.issues[0]?.message || 'Weak password' };
+  return r.success ? { ok: true as const } : { ok: false as const, error: r.error.issues[0]?.message ?? 'Weak password' };
 }
 
 /* ---------------------------------------------------------------------- */

@@ -15,8 +15,8 @@ const g = globalThis as any
 
 /* ---------------------------------------------------------------------- */
 
-let client: Client | null = g.__REDIS_CLIENT__ || null
-let lastError: string | null = g.__REDIS_LAST_ERROR__ || null
+let client: Client | null = g.__REDIS_CLIENT__ ?? null
+let lastError: string | null = g.__REDIS_LAST_ERROR__ ?? null
 
 /* ---------------------------------------------------------------------- */
 
@@ -26,7 +26,7 @@ function attachListeners(c: Client) {
   ;(c as any)[key] = true
 
   c.on('error', (err: any) => {
-    lastError = String(err?.message || err)
+    lastError = String(err?.message ?? err)
     g.__REDIS_LAST_ERROR__ = lastError
   })
 
@@ -42,8 +42,8 @@ function getClient(): Client {
   client = new Redis({
     host: config.REDIS_HOST,
     port: config.REDIS_PORT,
-    username: config.REDIS_USERNAME || undefined,
-    password: config.REDIS_PASSWORD || undefined,
+    username: config.REDIS_USERNAME ?? undefined,
+    password: config.REDIS_PASSWORD ?? undefined,
     lazyConnect: true,
     connectTimeout: 3000,
     maxRetriesPerRequest: 0,

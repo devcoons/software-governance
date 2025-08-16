@@ -15,12 +15,12 @@ export class SafeFetchError extends Error {
 async function safeFetch<T = any>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const res = await fetch(input, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers || {}) },
+    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
     cache: 'no-store',
   });
 
   const url = typeof input === 'string' ? input : (input as URL).toString();
-  const ct = res.headers.get('content-type') || '';
+  const ct = res.headers.get('content-type') ?? '';
   const isJson = ct.includes('application/json');
 
   let parsed: unknown = undefined;

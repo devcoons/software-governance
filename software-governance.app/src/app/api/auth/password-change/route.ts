@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
         return jsonErr('bad_request',null, 400)
     }
 
-    const newPassword = String(body.newPassword || '')
-    const confirm = String(body.confirm || '')
+    const newPassword = String(body.newPassword ?? '')
+    const confirm = String(body.confirm ?? '')
     if (!newPassword || newPassword !== confirm) {
         return jsonErr('password_mismatch',null, 400)
     }

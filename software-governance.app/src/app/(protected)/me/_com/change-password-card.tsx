@@ -29,7 +29,7 @@ async function handleChangePassword(e: React.FormEvent) {
 
     if (!res.ok) {
       // Use the API's error if provided, otherwise generic
-      const msg = data?.error || 'Failed to update password.';
+      const msg = data?.error ?? 'Failed to update password.';
       setStatus(`❌ ${msg}`);
       return;
     }
@@ -40,7 +40,7 @@ async function handleChangePassword(e: React.FormEvent) {
     setConfirmPassword('');
 
   } catch (err: any) {
-    setStatus(`❌ ${err.message || 'Unexpected error occurred.'}`);
+    setStatus(`❌ ${err.message ?? 'Unexpected error occurred.'}`);
   } finally {
     setBusy(false);
   }

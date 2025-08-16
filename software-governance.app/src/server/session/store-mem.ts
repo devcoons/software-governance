@@ -36,7 +36,7 @@ function delIndex(map: Map<string, Set<string>>, key: string, id: string) {
 
 export const memoryStore: SessionStore = {
   async getSession(sid) {
-    const rec = sessions.get(sid) || null
+    const rec = sessions.get(sid) ?? null
     if (!rec) return null
     if (rec.exp <= Date.now()) {
       await this.deleteSession(sid)
@@ -57,7 +57,7 @@ export const memoryStore: SessionStore = {
   },
 
   async listUserSessions(userId) {
-    const ids = Array.from(userSids.get(userId) || [])
+    const ids = Array.from(userSids.get(userId) ?? [])
     const now = Date.now()
     return ids
       .map(id => sessions.get(id))
@@ -65,7 +65,7 @@ export const memoryStore: SessionStore = {
   },
 
   async revokeUserSessions(userId, keepSid) {
-    const ids = Array.from(userSids.get(userId) || [])
+    const ids = Array.from(userSids.get(userId) ?? [])
     let count = 0
     for (const sid of ids) {
       if (keepSid && sid === keepSid) continue
@@ -76,7 +76,7 @@ export const memoryStore: SessionStore = {
   },
 
   async getRefresh(rid) {
-    const rec = refreshes.get(rid) || null
+    const rec = refreshes.get(rid) ?? null
     if (!rec) return null
     if (rec.absolute_exp_at <= Date.now()) {
       refreshes.delete(rid)
@@ -101,7 +101,7 @@ export const memoryStore: SessionStore = {
   },
 
   async revokeUserRefresh(userId) {
-    const ids = Array.from(userRids.get(userId) || [])
+    const ids = Array.from(userRids.get(userId) ?? [])
     let count = 0
     for (const rid of ids) {
       if (refreshes.delete(rid)) count++

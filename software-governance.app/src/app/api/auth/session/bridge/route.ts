@@ -12,9 +12,9 @@ import config from '@/config' // ⬅️ added
 
 function nextLocation(req: NextRequest): string {
   const url = new URL(req.url)
-  const raw = url.searchParams.get('next') || '/'
+  const raw = url.searchParams.get('next') ?? '/'
   const safe = sanitizeNext(raw)
-  return safe || '/'
+  return safe ?? '/'
 }
 
 /* Terminal failures should disconnect the user (clear cookies -> login) */

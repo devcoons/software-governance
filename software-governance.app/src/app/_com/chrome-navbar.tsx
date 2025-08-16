@@ -63,7 +63,7 @@ export default async function NavBar() {
 
   return (
     <div className="bg-base-100 shadow-sm">
-      <div className="navbar max-w-screen-xl mx-auto px-4 lg:px-8">
+      <div className="navbar max-w-screen-2xl mx-auto px-4 lg:px-8">
         {/* LEFT */}
         <div className="navbar-start">
           <Link href={'/dashboard'} className="btn btn-ghost text-xl">

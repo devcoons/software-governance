@@ -30,10 +30,10 @@ export default function ForgotPasswordForm() {
     setNotice(null);
 
     const fd = new FormData(e.currentTarget);
-    const username = String(fd.get("username") || "").trim();
-    const newPassword = String(fd.get("new_password") || "");
-    const confirmPassword = String(fd.get("confirm_password") || "");
-    const totp = String(fd.get("totp") || "").replace(/\D/g, ""); // digits only
+    const username = String(fd.get("username") ?? "").trim();
+    const newPassword = String(fd.get("new_password") ?? "");
+    const confirmPassword = String(fd.get("confirm_password") ?? "");
+    const totp = String(fd.get("totp") ?? "").replace(/\D/g, ""); // digits only
 
     if (!username) return setError("Username is required.");
     if (!newPassword) return setError("New password is required.");

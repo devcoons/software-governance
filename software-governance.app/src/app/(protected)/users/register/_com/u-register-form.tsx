@@ -22,8 +22,8 @@ export default function RegisterForm() {
 
     const form = e.currentTarget as HTMLFormElement;
     const fd = new FormData(e.currentTarget);
-    const email = String(fd.get('email') || '').trim();
-    const role = String(fd.get('role') || 'user');
+    const email = String(fd.get('email') ?? '').trim();
+    const role = String(fd.get('role') ?? 'user');
 
     if (!email) { setError('Email is required.'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setError('Invalid email.'); return; }
@@ -42,14 +42,14 @@ export default function RegisterForm() {
       });
 
       let data: unknown = {};
-      const ct = res.headers.get('content-type') || '';
+      const ct = res.headers.get('content-type') ?? '';
       if (ct.includes('application/json')) {
         data = await res.json().catch(() => ({}));
       }
 
       if (!res.ok) {
         const errMsg = (data as CreateUserErr)?.error;
-        setError(errMsg || `Failed to create user (${res.status}).`);
+        setError(errMsg ?? `Failed to create user (${res.status}).`);
         return;
       }
 

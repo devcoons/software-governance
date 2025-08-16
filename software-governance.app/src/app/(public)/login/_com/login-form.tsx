@@ -18,7 +18,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const qs = useSearchParams()
-  const next = qs.get('next') || '/dashboard'
+  const next = qs.get('next') ?? '/dashboard'
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -35,7 +35,7 @@ export default function LoginForm() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.ok) {
         console.log(res);
-        setError(data?.error || 'login_failed')
+        setError(data?.error ?? 'login_failed')
         setLoading(false)
         return
       }

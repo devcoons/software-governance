@@ -23,7 +23,7 @@ export default async function UsersOverviewPage() {
 
   return (
     <Chrome>
-      <div className="max-w-screen-xl mx-auto px-4 lg:px-16 py-8">
+      <div className="max-w-screen-2xl mx-auto px-4 lg:px-16 py-8">
         <h1 className="text-2xl font-bold mb-6">Users</h1>
         <div className="card bg-base-100 shadow-md border border-base-300">
           <UsersTable users={users} isAdmin={isAdmin} />

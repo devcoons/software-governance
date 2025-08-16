@@ -31,7 +31,7 @@ export default async function Page() {
 
     return (
     <Chrome>
-        <div className="max-w-screen-xl mx-auto px-4 lg:px-16 py-8">
+        <div className="max-w-screen-2xl mx-auto px-4 lg:px-16 py-8">
             <h1 className="text-2xl font-bold mb-6">My Profile</h1>
             <div className="grid md:grid-cols-2 md:items-start gap-8">
                 <div className="flex flex-col gap-8">

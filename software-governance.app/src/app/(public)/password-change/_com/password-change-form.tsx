@@ -29,7 +29,7 @@ export default function PasswordChangeForm() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.ok) {
-        setError(data?.error || 'change_failed')
+        setError(data?.error ?? 'change_failed')
         setLoading(false)
         return
       }

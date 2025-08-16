@@ -122,8 +122,8 @@ export type GetSessionAndRefreshResult = {
 
 export async function getSessionAndRefresh(req: NextRequest, res?: NextResponse): Promise<GetSessionAndRefreshResult> {
   const trace = req.headers.get('x-trace-id') ?? 'no-trace'
-  const sidCookie = req.cookies.get(app.SESSION_COOKIE)?.value || ''
-  const ridCookie = req.cookies.get(app.REFRESH_COOKIE)?.value || ''
+  const sidCookie = req.cookies.get(app.SESSION_COOKIE)?.value ?? ''
+  const ridCookie = req.cookies.get(app.REFRESH_COOKIE)?.value ?? ''
   console.log('[API-AUTH]', trace, 'sid:', sidCookie ? '1' : '0', 'rid:', ridCookie ? '1' : '0')
 
   /* 1) Try current SID via existing reader */
