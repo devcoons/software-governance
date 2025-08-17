@@ -8,6 +8,8 @@ import RoleSelect, { Role } from './user-role-select'
 import TOTPModal from '@/app/_com/totp-modal-insert-pin'
 import EnableTOTPRequiredModal from '@/app/_com/totp-modal-warning'
 import { useManualLoading } from '@/app/_com/manual-loading'
+import UserProfileView from './user-profile-view'
+
 
 import {
   deleteUser,
@@ -122,7 +124,7 @@ export default function UsersTable({
   const initialQ = params.get('q') ?? '';
   const [searchDraft, setSearchDraft] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
-
+    const [viewingUser, setViewingUser] = useState<{ id: string, email: string } | null>(null)
   const [sortKey, setSortKey] = useState<SortKey>(
     (params.get('sort') as SortKey) ?? 'created'
   );
@@ -130,6 +132,11 @@ export default function UsersTable({
     (params.get('dir') as SortDir) ?? 'desc'
   );
   const [page, setPage] = useState(Number(params.get('page') || 1));
+
+const handleViewProfile = (userId: string, email: string) => {
+    setViewingUser({ id: userId, email })
+}
+
 
   const [totpModal, setTotpModal] = useState<
     | null
@@ -481,7 +488,7 @@ const closePasswordModalAndRefresh = () => {
                     <td className="flex ">
                         <button
                         className="btn btn-ghost btn-sm"
-                        onClick={() => handleResetPassword(u.id, u.email)}
+                        onClick={() => handleViewProfile(u.id, u.email)}
                         title="Profile"
                       >
                         <User size={20} />
@@ -598,6 +605,13 @@ const closePasswordModalAndRefresh = () => {
         />
       )}
 
+{viewingUser && (
+    <UserProfileView
+        userId={viewingUser.id}
+        email={viewingUser.email}
+        onClose={() => setViewingUser(null)}
+    />
+)}
     </>
   );
 }
