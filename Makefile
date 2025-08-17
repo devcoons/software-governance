@@ -4,7 +4,7 @@ PROD := -f compose/compose.prod.yml
 ENV_FILE    := .env
 
 .PHONY: dev-up dev-down prod-up prod-down
-dev-up:  ; $(COMPOSE) --env-file $(ENV_FILE) $(DEV) up -d --build
+dev-up:  ; $(COMPOSE) --env-file $(ENV_FILE) $(DEV) up -d 
 dev-down:; $(COMPOSE) --env-file $(ENV_FILE) $(DEV) down -v
 prod-up: ; $(COMPOSE) --env-file $(ENV_FILE) $(PROD) up -d --build
 prod-down:;$(COMPOSE) --env-file $(ENV_FILE) $(PROD) down -v

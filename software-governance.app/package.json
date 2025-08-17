@@ -11,22 +11,28 @@
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
+    "clsx": "^2.1.1",
     "daisyui": "^5.0.50",
     "dotenv": "^17.2.1",
+    "ioredis": "^5.7.0",
+    "lucide-react": "^0.539.0",
     "mysql2": "^3.14.3",
     "next": "15.4.6",
     "otplib": "^12.0.1",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "require": "^0.4.4"
+    "require": "^0.4.4",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
+    "tsx": "^4.20.4",
     "typescript": "^5"
   }
 }

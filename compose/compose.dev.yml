@@ -49,15 +49,15 @@ services:
     image: software-gov/db-adm:latest
     environment:
       PMA_HOST: db
-      PMA_USER: ${DB_USER}
-      PMA_PASSWORD_FILE: /run/secrets/db_password
+      PMA_USER: root
+      PMA_PASSWORD_FILE: /run/secrets/db_root_password
     ports:
       - "8080:80"
     depends_on:
       db:
         condition: service_healthy
     secrets:
-      - db_password
+      - db_root_password
 
 secrets:
   db_root_password:
