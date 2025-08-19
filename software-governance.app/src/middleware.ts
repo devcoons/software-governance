@@ -1,12 +1,20 @@
-/* middleware.ts */
 /* ---------------------------------------------------------------------- */
+/* Filepath: src/middleware.ts */
 /* ---------------------------------------------------------------------- */
 
-import { NextRequest, NextResponse } from 'next/server'
 import appConfig from '@/config.e'
-import { sanitizeNext } from './server/http/next'
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
+import { getCurrentSession } from './server/auth/ctx'
 
 /* ---------------------------------------------------------------------- */
+
+const LOGIN_PATH  = '/login'
+const BRIDGE_PATH = '/api/session-bridge'
+
+const ASSET_RE = /\.(?:js|mjs|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|map)$/i
 
 type HealthCache = { ts: number; ok: boolean }
 const g = globalThis as any
@@ -14,22 +22,14 @@ let edgeHealthCache: HealthCache | null = g.__EDGE_HEALTH__ ?? null
 
 /* ---------------------------------------------------------------------- */
 
-function isAllowedPath(pathname: string): boolean {
-    if (pathname === '/maintenance') return true
-    if (appConfig.ALLOW_EXACT.includes(pathname)) return true
-    for (const p of appConfig.ALLOW_PREFIXES) {
-        if (pathname.startsWith(p)) return true
-    }
-    return false
-}
+function isApi(pathname: string)            { return pathname.startsWith('/api/') }
+function isNextInternal(pathname: string)   { return pathname.startsWith('/_next') }
+function isAsset(pathname: string)          { return ASSET_RE.test(pathname) }
 
 /* ---------------------------------------------------------------------- */
 
-function isProtectedPath(pathname: string): boolean {
-    for (const p of appConfig.PROTECTED_PREFIXES) {
-        if (pathname === p || pathname.startsWith(p + '/')) return true
-    }
-    return false
+function isPublic(pathname: string): boolean {
+  return appConfig.URL_PUBLIC.some(p => pathname === p || pathname.startsWith(p + '/'))
 }
 
 /* ---------------------------------------------------------------------- */
@@ -44,7 +44,7 @@ function edgeCacheFresh(): boolean {
 async function checkHealth(req: NextRequest): Promise<boolean> {
     if (edgeCacheFresh()) return edgeHealthCache!.ok
     try {
-        const url = new URL('/api/health/ready', req.url)
+        const url = new URL('/api/health', req.url)
         const res = await fetch(url, { cache: 'no-store' })
         const ok = res.ok
         edgeHealthCache = { ts: Date.now(), ok }
@@ -59,29 +59,35 @@ async function checkHealth(req: NextRequest): Promise<boolean> {
 
 /* ---------------------------------------------------------------------- */
 
+export function sanitizeNext(input: unknown): string {
+    const raw = String(input ?? '').trim()
+    if (raw.length === 0) return '/'
+    if (!raw.startsWith('/')) return '/'
+    if (raw.startsWith('//')) return '/'   /* network-path ref → reject */
+    if (raw.includes('\\') || /[\u0000-\u001F]/.test(raw)) return '/'
+    return raw
+}
+
+/* ---------------------------------------------------------------------- */
+
 export async function middleware(req: NextRequest) {
-    const { pathname, search } = req.nextUrl
-    // One header dump to help trace RSC/data vs doc
-    console.log('[MW] Pathname:', pathname, 'Search:', search, {
-        mode: req.headers.get('sec-fetch-mode'),
-        dest: req.headers.get('sec-fetch-dest'),
-        accept: req.headers.get('accept'),
-        prefetch: req.headers.get('next-router-prefetch'),
-    })
+	const { nextUrl, cookies } = req
+    const pathname = nextUrl.pathname
 
-    // Skip API routes
-    if (pathname.startsWith('/api/')) {
-        console.log('[MW] Skipping API path')
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-url', req.nextUrl.pathname + req.nextUrl.search)
+
+
+    if (pathname === '/maintenance')
         return NextResponse.next()
+
+    if (pathname === BRIDGE_PATH)                 
+        return NextResponse.next()
+
+    if (isApi(pathname) || isNextInternal(pathname) || isAsset(pathname)) {
+        return NextResponse.next({request: { headers: requestHeaders }})
     }
 
-    // Allowlist
-    if (isAllowedPath(pathname)) {
-        console.log('[MW] Allowed path')
-        return NextResponse.next()
-    }
-
-    // Health check
     const healthy = await checkHealth(req)
     console.log('[MW] Health status:', healthy ? 'healthy' : 'unhealthy')
     if (!healthy) {
@@ -91,44 +97,56 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(maintenance)
     }
 
-    // Gate protected paths (no pass-through for RSC/data)
-    const protectedPath = isProtectedPath(pathname)
-    console.log('[MW] Protected path:', protectedPath ? 'yes' : 'no')
-    if (!protectedPath) {
-        return NextResponse.next()
+    const sid = cookies.get(appConfig.SESSION_COOKIE)?.value ?? null
+    const rid = cookies.get(appConfig.REFRESH_COOKIE)?.value ?? null
+
+    const rememberPath = () => {
+        if (req.method !== 'GET') return NextResponse.next()
+        const res = NextResponse.next()
+        res.cookies.set('__last_path', pathname + nextUrl.search, { path: '/', sameSite: 'lax', maxAge: 60 })
+        return res
     }
 
-    // Check session cookie
-    const sid = req.cookies.get(appConfig.SESSION_COOKIE)?.value ?? ''
-    console.log('[MW] SID cookie:', sid ? 'present' : 'missing')
+    if (isPublic(pathname)) {
+
+        if(sid && pathname === LOGIN_PATH)
+        {
+            const login = nextUrl.clone()
+            login.pathname = '/dashboard'
+            const res = NextResponse.redirect(login)
+            res.headers.set('Cache-Control', 'no-store')
+            res.headers.set('x-url', req.nextUrl.pathname + req.nextUrl.search)
+            return res
+        }
+        return rememberPath()
+    }
+
     if (sid) {
-        console.log('[MW] Valid SID, proceeding')
-        return NextResponse.next()
+         console.log('[MIDDLE] - Jumping to:',pathname)
+        return NextResponse.next({request: { headers: requestHeaders }})
+
     }
-
-    // Check refresh cookie
-    const rid = req.cookies.get(appConfig.REFRESH_COOKIE)?.value ?? ''
-    console.log('[MW] RID cookie:', rid ? 'present' : 'missing')
-
-    const next = sanitizeNext(req.nextUrl.pathname + req.nextUrl.search)
 
     if (rid) {
-        console.log('[MW] SID missing but RID present → redirecting to bridge for refresh')
-        const bridge = new URL(`/api/auth/session/bridge?next=${encodeURIComponent(next)}`, req.url)
-        console.log('[MW] Bridge URL:', bridge.toString())
-        // 307 is fine (preserves method); bridge returns 303 back to target
-        return NextResponse.redirect(bridge, { status: 307 })
+        const to = nextUrl.clone()
+        to.pathname = BRIDGE_PATH
+        to.searchParams.set('next', pathname + nextUrl.search)
+        to.searchParams.set('__bridged', '1') // harmless hint
+        const res = NextResponse.redirect(to)
+        res.headers.set('Cache-Control', 'no-store')
+        res.headers.set('x-url', req.nextUrl.pathname + req.nextUrl.search)
+        return res
     }
 
-    // No SID or RID → redirect to login
-    console.log('[MW] No SID or RID → redirecting to login')
-    const login = new URL(`/login?next=${encodeURIComponent(next)}`, req.url)
-    console.log('[MW] Login URL:', login.toString())
-    return NextResponse.redirect(login, { status: 303 })
+    const login = nextUrl.clone()
+    login.pathname = LOGIN_PATH
+    login.searchParams.set('next', pathname + nextUrl.search)
+    const res = NextResponse.redirect(login)
+    res.headers.set('Cache-Control', 'no-store')
+    res.headers.set('x-url', req.nextUrl.pathname + req.nextUrl.search)
+    return res        
+ 
 }
 
 /* ---------------------------------------------------------------------- */
-
-export const config = {
-    matcher: ['/((?!api|_next|static|assets).*)'],
-}
+/* ---------------------------------------------------------------------- */

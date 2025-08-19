@@ -9,6 +9,7 @@ import * as dotenv from 'dotenv'
 /* ---------------------------------------------------------------------- */
 
 type SameSite = 'lax' | 'strict' | 'none'
+const ROUTE_GROUP_RE = /^\(.*\)$/ // matches (public), (protected), (admin)
 
 /* ---------------------------------------------------------------------- */
 
@@ -17,6 +18,32 @@ function asInt(name: string, v: unknown, def: number, min?: number): number {
   if (!Number.isFinite(n)) throw new Error(`Invalid integer for ${name}`)
   if (min != null && n < min) throw new Error(`Invalid ${name}: must be >= ${min}`)
   return n
+}
+
+/* ---------------------------------------------------------------------- */
+
+function walkRoutes(root: string, group: 'public' | 'protected' | 'admin'): string[] {
+  const out: string[] = []
+  if (!fs.existsSync(root)) return out
+
+  function walk(dir: string, prefix: string[] = []) {
+    const items = fs.readdirSync(dir, { withFileTypes: true })
+    for (const it of items) {
+      if (it.isDirectory()) {
+        const seg = it.name
+        // skip group folder names in URL
+        const nextPrefix = ROUTE_GROUP_RE.test(seg) ? prefix : [...prefix, seg]
+        walk(path.join(dir, seg), nextPrefix)
+      } else if (it.isFile() && (it.name === 'page.tsx' || it.name === 'route.ts')) {
+        const url = '/' + prefix.join('/')
+        // map to /api/* if under src/app/api
+        const norm = url.startsWith('/api') ? url : url || '/'
+        out.push(norm)
+      }
+    }
+  }
+  walk(root, root.includes('/api/') ? ['api'] : [])
+  return out
 }
 
 /* ---------------------------------------------------------------------- */
@@ -198,6 +225,25 @@ const ALLOW_PREFIXES = [
     '/auth/logout',
   ]
 
+  // discover URLs
+  const urlPublic: string[] = []
+  const urlProtected: string[] = []
+  const urlAdmin: string[] = []
+
+  urlPublic.push(
+    ...walkRoutes(path.resolve('src/app/(public)'), 'public'),
+    ...walkRoutes(path.resolve('src/app/api/(public)'), 'public'),
+  )
+  urlProtected.push(
+    ...walkRoutes(path.resolve('src/app/(protected)'), 'protected'),
+    ...walkRoutes(path.resolve('src/app/api/(protected)'), 'protected'),
+  )
+  urlAdmin.push(
+    ...walkRoutes(path.resolve('src/app/(admin)'), 'admin'),
+    ...walkRoutes(path.resolve('src/app/api/(admin)'), 'admin'),
+  )
+
+
   return {
     NODE_ENV,
     IS_PROD,
@@ -242,6 +288,9 @@ const ALLOW_PREFIXES = [
     FORGOT_PASS_RATE_LIMIT,
     USER_REFRESH_ZSET_PREFIX,
     DEBUGGING,
+    URL_PUBLIC: urlPublic,
+    URL_PROTECTED: urlProtected,
+    URL_ADMIN: urlAdmin,
   }
 }
 
@@ -301,6 +350,9 @@ const config: ConfigFlat = Object.freeze({
   PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
   FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
   DEBUGGING: ${v.DEBUGGING},
+  URL_PUBLIC: ${JSON.stringify(v.URL_PUBLIC)},
+  URL_PROTECTED: ${JSON.stringify(v.URL_PROTECTED)},
+  URL_ADMIN: ${JSON.stringify(v.URL_ADMIN)},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -367,6 +419,9 @@ const config: ConfigFlat = Object.freeze({
   PASSWORD_MIN_SIZE: ${v.PASSWORD_MIN_SIZE},
   FORGOT_PASS_RATE_LIMIT: ${v.FORGOT_PASS_RATE_LIMIT},
   DEBUGGING: ${v.DEBUGGING},
+  URL_PUBLIC: ${JSON.stringify(v.URL_PUBLIC)},
+  URL_PROTECTED: ${JSON.stringify(v.URL_PROTECTED)},
+  URL_ADMIN: ${JSON.stringify(v.URL_ADMIN)},
 })
 
 /* ---------------------------------------------------------------------- */
@@ -440,6 +495,9 @@ export type ConfigFlat = Readonly<{
   PASSWORD_MIN_SIZE: number
   FORGOT_PASS_RATE_LIMIT: number
   DEBUGGING: boolean
+  URL_PUBLIC: string[]
+  URL_PROTECTED: string[]
+  URL_ADMIN: string[]
 }>
 `
   fs.mkdirSync(path.dirname(outFile), { recursive: true })

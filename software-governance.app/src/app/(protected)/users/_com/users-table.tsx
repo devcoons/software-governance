@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
-import { Trash2, KeyRound, User, CircleCheckIcon, CircleCheckBigIcon, Ban } from 'lucide-react';
+import { Trash2, KeyRound, User, CircleCheckBigIcon, Ban } from 'lucide-react';
 import RoleSelect, { Role } from './user-role-select'
 import TOTPModal from '@/app/_com/totp-modal-insert-pin'
 import EnableTOTPRequiredModal from '@/app/_com/totp-modal-warning'

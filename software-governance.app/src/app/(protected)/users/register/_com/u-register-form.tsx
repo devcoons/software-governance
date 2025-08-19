@@ -32,7 +32,7 @@ export default function RegisterForm() {
     setPending(true);
 
     try {
-      const res = await fetch('/api/admin/users/create', {
+      const res = await fetch('/api/users/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         // Always force first-login password change

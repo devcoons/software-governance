@@ -1,8 +1,7 @@
 'use client'
 
 import { DbUserProfile } from "@/server/db/user-profile-repo";
-import { redirect } from "next/dist/server/api-utils";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
 
 
@@ -11,6 +10,7 @@ async function UpdateUserProfile(first_name: string, last_name:string, phone_num
     const res = await fetch('/api/me/profile', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      credentials: 'same-origin', 
       cache: 'no-store',
       body: JSON.stringify({
         first_name: first_name,
@@ -21,7 +21,7 @@ async function UpdateUserProfile(first_name: string, last_name:string, phone_num
     })
     return res.ok
   } catch {
-    return false
+    redirect('/login?next=/profile')
   }
 }
 

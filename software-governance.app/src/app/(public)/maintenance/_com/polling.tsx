@@ -18,7 +18,7 @@ export default function HealthPoller() {
     let stop = false
     const tick = async () => {
       try {
-        const res = await fetch('/api/health/ready', { cache: 'no-store' })
+        const res = await fetch('/api/health', { cache: 'no-store' })
         if (res.ok && !stop) {
           router.replace(next)
           return

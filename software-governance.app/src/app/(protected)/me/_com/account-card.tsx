@@ -1,6 +1,6 @@
 'use client'
 
-import { SessionClaims } from "@/server/session/claims";
+import { SessionClaims } from "@/server/auth/types";
 
 export default function AccountCard(details: {sid: string, user_id: string, claims: SessionClaims | undefined}) {
     return (

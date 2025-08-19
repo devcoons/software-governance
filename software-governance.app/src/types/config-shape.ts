@@ -46,4 +46,7 @@ export type ConfigFlat = Readonly<{
   PASSWORD_MIN_SIZE: number
   FORGOT_PASS_RATE_LIMIT: number
   DEBUGGING: boolean
+  URL_PUBLIC: string[]
+  URL_PROTECTED: string[]
+  URL_ADMIN: string[]
 }>

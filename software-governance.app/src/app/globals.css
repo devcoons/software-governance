@@ -1,4 +1,5 @@
 @import "tailwindcss";
+
 @plugin "daisyui" {
   themes: corporate --default;
   root: ":root";
@@ -7,6 +8,7 @@
   prefix: ;
   logs: true;
 }
+
 @plugin "daisyui/theme" {
   name: "corporate";
   default: true;
@@ -14,6 +16,6 @@
   --color-secondary: teal;
   --menu-active-fg: red;
 }
-/* global resets */
+
 html, body { height: 100%; }
 * { box-sizing: border-box; }

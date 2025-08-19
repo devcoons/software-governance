@@ -45,13 +45,13 @@ async function safeFetch<T = any>(input: RequestInfo | URL, init?: RequestInit):
 /* API wrappers */
 
 export async function currentAdminHasTOTP(): Promise<boolean> {
-  const d = await safeFetch<{ ok: boolean; enabled: boolean }>('/api/auth/totp/enabled', { method: 'GET' });
+  const d = await safeFetch<{ ok: boolean; enabled: boolean }>('/api/me/totp/enabled', { method: 'GET' });
   return !!d.enabled;
 }
 
 export async function resetPassword(userId: string, totp: string): Promise<string | null> {
 
-  const res = await fetch('/api/admin/users/reset-password', {
+  const res = await fetch('/api/users/reset-password', {
     method: 'POST',
     body: JSON.stringify({ userId, totp }),
   });
@@ -63,14 +63,14 @@ export async function resetPassword(userId: string, totp: string): Promise<strin
 }
 
 export async function deleteUser(userId: string, totp: string): Promise<void> {
-  await safeFetch('/api/admin/users/delete', {
+  await safeFetch('/api/users/delete', {
     method: 'POST',
     body: JSON.stringify({ userId, totp }),
   });
 }
 
 export async function toggleUserStatus(userId: string, totp: string): Promise<void> {
-  await safeFetch('/api/admin/users/toggle-status', {
+  await safeFetch('/api/users/toggle-status', {
     method: 'POST',
     body: JSON.stringify({ userId, totp }),
   });
@@ -82,7 +82,7 @@ export async function changeUserRole(
   role: 'admin' | 'user' | 'viewer',
   totp: string
 ): Promise<void> {
-  await safeFetch('/api/admin/users/change-role', {
+  await safeFetch('/api/users/change-role', {
     method: 'POST',
     body: JSON.stringify({ userId, role, totp }),
   });

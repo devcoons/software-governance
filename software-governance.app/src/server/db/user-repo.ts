@@ -5,6 +5,7 @@
 import type { RowDataPacket, PoolConnection, ResultSetHeader } from 'mysql2/promise'
 import { query, exec, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
 import { randomUUID } from 'node:crypto'
+import { generatePassword, hashPassword } from '@/libs/password'
 
 /* ---------------------------------------------------------------------- */
 
@@ -354,41 +355,50 @@ export async function setUserRole(userId: string, roles: string[]): Promise<void
 
 export async function createUserWithTempPassword(
   email: string,
-  passwordHash: string,
   roles: string[] = ['user'],
-): Promise<string> {
-  const id = randomUUID();
-  const username = email; // deterministic, satisfies UNIQUE(username)
+): Promise<{ id: string; tempPassword: string }> {
+    const id = randomUUID()
+    const normalizedEmail = email.trim().toLowerCase()
+    const username = normalizedEmail // deterministic, satisfies UNIQUE(username)
+    const tempPassword = generatePassword(14)
+    const passwordHash = await hashPassword(tempPassword)
 
-  await withTransaction(async (conn) => {
-    await conn.execute(
-      `
-      INSERT INTO users (
-        id, email, username, password,
-        is_active, roles, permissions,
-        totp_enabled, force_password_change,
-        temp_password_issued_at, temp_password_used_at,
-        created_at, updated_at
-      )
-      VALUES (
-        UNHEX(REPLACE(?, '-', '')), ?, ?, ?,
-        1, ?, '[]',
-        0, 1,
-        NOW(), NULL,
-        NOW(), NOW()
-      )
-      `,
-      [id, email, username, passwordHash, JSON.stringify(roles)]
-    );
+    try {
+        await withTransaction(async (conn) => {
+        await conn.execute(
+            `
+            INSERT INTO users (
+            id, email, username, password,
+            is_active, roles, permissions,
+            totp_enabled, force_password_change,
+            temp_password_issued_at, temp_password_used_at,
+            created_at, updated_at
+            )
+            VALUES (
+            UNHEX(REPLACE(?, '-', '')), ?, ?, ?,
+            1, ?, '[]',
+            0, 1,
+            NOW(), NULL,
+            NOW(), NOW()
+            )
+            `,
+            [id, normalizedEmail, username, passwordHash, JSON.stringify(roles)],
+        )
 
-    await conn.execute(
-      `
-      INSERT INTO user_profile (user_id, first_name, last_name, phone_number, timezone)
-      VALUES (UNHEX(REPLACE(?, '-', '')), NULL, NULL, NULL, NULL)
-      `,
-      [id]
-    );
-  });
+        await conn.execute(
+            `
+            INSERT INTO user_profile (user_id, first_name, last_name, phone_number, timezone)
+            VALUES (UNHEX(REPLACE(?, '-', '')), NULL, NULL, NULL, NULL)
+            `,
+            [id],
+        )
+        })
+    } catch (err: any) {
+        if (err?.code === 'ER_DUP_ENTRY') {
+            throw Object.assign(new Error('duplicate_user'), { code: 'duplicate_user', cause: err })
+        }
+        throw err
+    }
 
-  return id;
+    return { id, tempPassword }
 }

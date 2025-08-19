@@ -2,15 +2,20 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
+import { getCurrentSession } from '@/server/auth/ctx';
+import { redirect } from 'next/dist/server/api-utils';
+import { headers } from 'next/headers';
 import { ReactNode } from 'react'
-import { redirect } from 'next/navigation'
-import { read as readSession } from '@/server/auth/reader'
 
 /* ---------------------------------------------------------------------- */
 
-export default async function ProtectedLayout({ children }: { children: ReactNode }) {
-  const sess = await readSession()
-  if (!sess) redirect('/login')
-  if (sess.claims.force_password_change) redirect('/password-change')
-  return <>{children}</>
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+export default function ProtectedLayout({ children }: { children: ReactNode }) {
+
+    return <>{children}</>
 }
+
+/* ---------------------------------------------------------------------- */

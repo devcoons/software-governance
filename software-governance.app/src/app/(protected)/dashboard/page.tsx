@@ -2,23 +2,28 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import Chrome from '@/app/_com/chrome'
-import { getSession } from '@/server/auth/ctx'
+import Chrome from '@/app/_com/chrome';
+import ChromeLight from '@/app/_com/chrome-light';
+import { toSessionView } from '@/app/_com/utils';
+import { getSessionOrBridge } from '@/server/auth/ctx';
 
 /* ---------------------------------------------------------------------- */
 
 export const metadata = { title: 'Dashboard' }
+export const dynamic = 'force-dynamic';
 
 /* ---------------------------------------------------------------------- */
 
 export default async function Page() {
-  const sess = await getSession()
-  return (
-    <Chrome>
-      <h1 className="mb-4 text-xl">Dashboard</h1>
-      <pre className="whitespace-pre-wrap text-sm border p-3 bg-gray-50">
-        {JSON.stringify({ ok: Boolean(sess), user: sess?.claims }, null, 2)}
-      </pre>
+
+    const session = await getSessionOrBridge();    
+    const sessionView = toSessionView(session);
+
+    return (
+    <Chrome session={sessionView}>
+        <h1 className="mb-4 text-xl">Dashboard</h1>
+        <pre className="whitespace-pre-wrap text-sm border p-3 bg-gray-50"/>  
     </Chrome>
-  )
+    )
 }
+

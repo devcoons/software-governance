@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 export default function TotpSetupCard({ initialEnabled = false }: { initialEnabled?: boolean }) {
   const [enabled, setEnabled] = useState(!!initialEnabled)
+  const [pending, setPending] = useState(false)
 
   const [showQR, setShowQR] = useState(false)
   const [qrData, setQrData] = useState<string | null>(null)
@@ -14,44 +15,47 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
   const [verifying, setVerifying] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    return () => {
-      if (qrHideTimer) clearTimeout(qrHideTimer)
-    }
-  }, [qrHideTimer])
+  useEffect(() => () => { if (qrHideTimer) clearTimeout(qrHideTimer) }, [qrHideTimer])
 
   async function handleShowQR() {
     setStatus(null)
     setQrLoading(true)
     try {
-      const res = await fetch('/api/auth/totp/setup', { method: 'GET', cache: 'no-store' })
+      const res = await fetch('/api/me/totp/setup', {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'same-origin',
+      })
       const data = await res.json().catch(() => ({} as any))
       if (!res.ok || !data?.otpauthUrl) {
-        setStatus(data?.error ? `❌ ${data.error}` : '❌ Could not start TOTP setup.')
+        setStatus(`❌ ${data?.error ?? 'Could not get TOTP QR.'}`)
         return
       }
 
-      const otpauthUrl = String(data.otpauthUrl ?? '')
+      // Build a data URL for nicer rendering if possible
       let dataUrl: string | null = null
       try {
         const { toDataURL } = await import('qrcode')
-        dataUrl = await toDataURL(otpauthUrl, { margin: 1, width: 200 })
+        dataUrl = await toDataURL(String(data.otpauthUrl), { margin: 1, width: 200 })
       } catch {
         dataUrl = null
       }
 
-      setQrData(dataUrl || otpauthUrl)
+      setQrData(dataUrl || String(data.otpauthUrl))
       setShowQR(true)
-      setEnabled(true)
+
+      // Use server's enabled flag
+      const isEnabled = !!data.enabled
+      setEnabled(isEnabled)
+      setPending(!isEnabled) // pending only when not enabled yet
 
       if (qrHideTimer) clearTimeout(qrHideTimer)
-      setQrHideTimer(
-        setTimeout(() => {
-          setShowQR(false)
-        }, 7000)
-      )
+      setQrHideTimer(setTimeout(() => {
+        setShowQR(false)
+        setStatus('ℹ️ QR code hidden for safety. Click again to show it.')
+      }, 60_000))
     } catch {
-      setStatus('❌ Could not start TOTP setup.')
+      setStatus('❌ Could not get TOTP QR.')
     } finally {
       setQrLoading(false)
     }
@@ -68,18 +72,21 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
     setStatus(null)
     setVerifying(true)
     try {
-      const res = await fetch('/api/auth/totp/verify', {
+      const res = await fetch('/api/me/totp/verify', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ code: verificationCode }),
       })
       const result = await res.json().catch(() => ({}))
       if (res.ok && result?.ok) {
         setEnabled(true)
-        setStatus('✅ TOTP verified.')
+        setPending(false)
+        setShowQR(false)
+        setVerificationCode('')
+        setStatus('✅ TOTP verified and enabled.')
       } else {
-        const msg = result?.error ?? 'Verification failed'
-        setStatus(`❌ ${msg}`)
+        setStatus(`❌ ${result?.error ?? 'Verification failed'}`)
       }
     } catch {
       setStatus('❌ Verification failed.')
@@ -95,7 +102,9 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         <p className="text-sm opacity-70 mb-2">
           {enabled
             ? 'TOTP is enabled for your account.'
-            : 'Add a second factor to better protect your account.'}
+            : pending
+              ? 'Scan the QR and enter a 6-digit code to finalize.'
+              : 'Add a second factor to better protect your account.'}
         </p>
 
         <div className="flex gap-2 mb-3">
@@ -103,9 +112,9 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
             onClick={handleShowQR}
             disabled={qrLoading || showQR}
             className="btn btn-primary btn-sm"
-            title={showQR ? 'QR is visible' : 'Generate QR code'}
+            title={showQR ? 'QR is visible' : (enabled ? 'Show existing QR' : 'Generate QR code')}
           >
-            {qrLoading ? 'Loading…' : 'Show QR Code'}
+            {qrLoading ? 'Loading…' : (enabled ? 'Show QR' : 'Show QR Code')}
           </button>
           {showQR && (
             <button onClick={handleHideQR} className="btn btn-outline btn-sm">
@@ -121,9 +130,7 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
             ) : (
               <div className="alert alert-info text-xs break-all">{qrData}</div>
             )}
-            <p className="text-xs mt-2 opacity-70">
-              Scan with Google Authenticator, Authy, or another TOTP app.
-            </p>
+            <p className="text-xs mt-2 opacity-70">Scan with Google Authenticator, Authy, or another TOTP app.</p>
           </div>
         )}
 
@@ -142,6 +149,7 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
               className="input input-bordered w-full"
               placeholder="123456"
               required
+              disabled={!pending && !enabled} // allow entry in pending; when enabled, typically not needed
             />
           </div>
           <button className="btn btn-success" disabled={verifying || verificationCode.length !== 6}>

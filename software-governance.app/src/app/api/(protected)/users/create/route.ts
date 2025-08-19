@@ -1,0 +1,38 @@
+/* ---------------------------------------------------------------------- */
+// app/api/admin/users/create/route.ts
+/* ---------------------------------------------------------------------- */
+
+export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
+
+import { z } from 'zod'
+import { hasRoles } from '@/app/_com/utils'
+import { NextRequest, NextResponse } from 'next/server'
+import { withSession } from '@/server/http/with-session'
+import { createUserWithTempPassword } from '@/server/db/user-repo'
+
+/* ---------------------------------------------------------------------- */
+
+const Body = z.object({
+    email: z.string().email(),
+    role: z.enum(['admin', 'user', 'viewer']),
+})
+
+/* ---------------------------------------------------------------------- */
+
+export const POST = withSession(async (req: NextRequest, _ctx, session) => {
+    if (!hasRoles(session, ['admin'])) {
+        return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 })
+    }
+
+    const parsed = Body.safeParse(await req.json().catch(() => null))
+    if (!parsed.success) return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 })
+
+    const { email, role } = parsed.data
+    const { tempPassword } = await createUserWithTempPassword(email, [role])
+
+    return NextResponse.json({ ok: true, password: tempPassword }, { headers: { 'Cache-Control': 'no-store' } })
+})
+
+/* ---------------------------------------------------------------------- */

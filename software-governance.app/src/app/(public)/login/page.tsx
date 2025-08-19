@@ -3,10 +3,9 @@
 /* ---------------------------------------------------------------------- */
 
 import { redirect } from 'next/navigation'
-import { read as readSession } from '@/server/auth/reader'
 import LoginForm from './_com/login-form'
-import ChromeLight from '@/app/_com/chrome-light'
 import FooterBar from '@/app/_com/chrome-footer'
+import { getCurrentSession } from '@/server/auth/ctx'
 
 /* ---------------------------------------------------------------------- */
 
@@ -15,12 +14,13 @@ export const metadata = { title: 'Login' }
 /* ---------------------------------------------------------------------- */
 
 export default async function Page() {
-  const sess = await readSession()
-  if (sess) {
-    if (sess.claims.force_password_change) {
-      redirect('/password-change')
+
+  const session = await getCurrentSession()
+  if (session) {
+    if (session.claims.force_password_change) {
+        redirect('/password-change')
     } else {
-      redirect('/dashboard')
+        redirect('/dashboard')
     }
   }
 

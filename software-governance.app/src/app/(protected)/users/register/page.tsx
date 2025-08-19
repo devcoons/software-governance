@@ -3,18 +3,20 @@ import { redirect } from 'next/navigation';
 
 import RegisterForm from './_com/u-register-form';
 import Chrome from '@/app/_com/chrome';
-import { getSession, hasRoles } from '@/server/auth/ctx';
+import { getSessionOrBridge} from '@/server/auth/ctx';
+import { hasRoles, toSessionView } from '@/app/_com/utils';
 
 export const runtime = 'nodejs';
 
 export default async function RegisterUserPage() {
-  const sess = await getSession()
-  
-  if(!hasRoles(sess,['admin']))
-    return redirect('/users');
+    const session = await getSessionOrBridge(); 
+    const sessionView = toSessionView(session);
+
+    if(!hasRoles(session,['admin','user']))
+        return redirect('/dashboard');
 
   return (
-    <Chrome>
+    <Chrome  session={sessionView}>
       <div className="max-w-screen-2xl mx-auto px-4 lg:px-16 py-8">
         <h1 className="text-2xl font-bold mb-6">Register New User</h1>
         <div className="grid gap-6 lg:grid-cols-3">
