@@ -3,6 +3,7 @@
 /* ---------------------------------------------------------------------- */
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 /* ---------------------------------------------------------------------- */
 
@@ -11,6 +12,7 @@ import { hasRoles } from '@/app/_com/utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
 import { createUserWithTempPassword } from '@/server/db/user-repo'
+import { createAuditLog } from '@/server/db/audit-repo'
 
 /* ---------------------------------------------------------------------- */
 
@@ -31,6 +33,8 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     const { email, role } = parsed.data
     const { tempPassword } = await createUserWithTempPassword(email, [role])
+    
+    await createAuditLog(session.user_id,'user:create',{'email':email,'role':role})
 
     return NextResponse.json({ ok: true, password: tempPassword }, { headers: { 'Cache-Control': 'no-store' } })
 })
