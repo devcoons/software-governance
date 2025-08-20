@@ -135,7 +135,7 @@ export async function getAndRefreshCurrentSession(req: NextRequest) : Promise<Ge
     })
 
     const rotated = await redisStore.rotateRefresh(currentRefresh.rid, nextRid)
-    const code = (rotated as any).code
+    const code = (rotated as { code: number }).code
 
     if(!rotated.ok) {
         if (code === -1) return { ok: false, error: 'not_found' }

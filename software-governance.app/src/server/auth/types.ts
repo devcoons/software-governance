@@ -1,5 +1,6 @@
 
-export interface AppSessionClaims {} 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+interface AppSessionClaims {}   // ← canonical, single definition
 
 /* ---------------------------------------------------------------------- */
 

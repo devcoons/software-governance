@@ -163,10 +163,6 @@ const handleViewProfile = (userId: string, email: string) => {
     onClose: () => void;
   }>(null);
 
-const closePasswordModalAndRefresh = () => {
-  setPasswordModal(null)
-  router.refresh()
-}
 
   // --- 400ms debounce: commit searchDraft -> query
   useEffect(() => {
@@ -270,18 +266,19 @@ const closePasswordModalAndRefresh = () => {
     askForTOTP(
       async (pin) => {
         try {
-          await changeUserRole(userId, newRole as any, pin);
+          await changeUserRole(userId, newRole, pin);
           setRoleErrors((prev) => {
             const copy = { ...prev };
             delete copy[userId];
             return copy;
           });
           
-        } catch (err: any) {
+        } catch (err: unknown) {
           revert();
+          const msg = err instanceof Error ? err.message : 'Failed to update role'
           setRoleErrors((prev) => ({
             ...prev,
-            [userId]: err?.message ?? 'Failed to update role',
+            [userId]: msg,
           }));
           setTimeout(() => {
             setRoleErrors((prev) => {
@@ -450,7 +447,7 @@ const closePasswordModalAndRefresh = () => {
                     {isAdmin ? (
                       <>
                         <RoleSelect
-                          userId={u.id}
+                         
                           initialRole={role}
                           onChange={(newRole, revert, done) =>
                             handleChangeRole(u.id, role, newRole, revert, done)

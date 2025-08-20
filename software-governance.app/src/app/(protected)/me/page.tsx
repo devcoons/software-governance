@@ -9,7 +9,6 @@ import TotpSetupCard from './_com/totp-card';
 import { getUserProfileById } from '@/server/db/user-profile-repo';
 import ProfileCard from './_com/profile-card';
 import AccountCard from './_com/account-card';
-import { redirect } from 'next/navigation';
 import { toSessionView } from '@/app/_com/utils';
 
 

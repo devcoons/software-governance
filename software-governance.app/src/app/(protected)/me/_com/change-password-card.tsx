@@ -68,8 +68,9 @@ export default function ChangePasswordCard() {
             const loginUrl = `/login?next=${encodeURIComponent(next)}`
             await new Promise((r) => setTimeout(r, 1800)) 
             return router.replace(loginUrl)
-        } catch (err: any) {
-            setStatus(`❌ ${err?.message ?? 'Network error. Try again.'}`)
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Network error. Try again.'
+            setStatus(`❌ ${msg}`)
         } finally {
             setBusy(false)
         }

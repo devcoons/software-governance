@@ -4,7 +4,6 @@
 
 import Link from 'next/link';
 import type { Route } from 'next';
-import { getCurrentSession } from '@/server/auth/ctx'
 import NavLinksClient from './chrome-navbar-links.client'
 import SubnavClient from './chrome-navbar-sublinks.client'
 import MeLink from './chrome-navbar-melinks.client'
@@ -44,10 +43,30 @@ function pickEffectiveRole(roles: unknown): Role {
 
 /* ---------------------------------------------------------------------- */
 
+function getStringArrayClaim<T extends string>(claims: unknown, key: string): T[] {
+  if (typeof claims !== 'object' || claims === null) return [];
+  const v = (claims as Record<string, unknown>)[key];
+
+  if (Array.isArray(v)) {
+    // keep only strings; coerce to T[]
+    return v.filter((x): x is T => typeof x === 'string');
+  }
+
+  if (typeof v === 'string') {
+    // also support comma-separated strings from older backends
+    return v.split(',').map(s => s.trim()).filter(Boolean) as T[];
+  }
+
+  return [];
+}
+
+/* ---------------------------------------------------------------------- */
+
 export default async function NavBar({ session }: { session: SessionView }) {
 
     
-	const role: Role = pickEffectiveRole(session?.claims?.roles);
+	const roles = getStringArrayClaim<Role>(session?.claims, 'roles');
+    const role: Role = pickEffectiveRole(roles);
 
 	const withUsers: MenuItem[] = role === 'viewer'
 			? [...BASE_ITEMS]

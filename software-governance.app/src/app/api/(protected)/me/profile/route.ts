@@ -53,7 +53,7 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
         timezome: updated.timezone,
       },
     })
-  } catch (e) {
+  } catch {
     return NextResponse.json({ ok: false, error: 'update_failed' }, { status: 500 })
   }
 })

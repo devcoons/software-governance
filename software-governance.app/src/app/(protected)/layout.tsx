@@ -2,9 +2,6 @@
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-import { getCurrentSession } from '@/server/auth/ctx';
-import { redirect } from 'next/dist/server/api-utils';
-import { headers } from 'next/headers';
 import { ReactNode } from 'react'
 
 /* ---------------------------------------------------------------------- */

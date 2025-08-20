@@ -3,13 +3,13 @@
 /* ---------------------------------------------------------------------- */
 
 import type { RowDataPacket, PoolConnection, ResultSetHeader } from 'mysql2/promise'
-import { query, exec, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
+import { query, exec, withTransaction, bufToUuid } from '@/server/db/mysql-client'
 import { randomUUID } from 'node:crypto'
 import { generatePassword, hashPassword } from '@/libs/password'
 
 /* ---------------------------------------------------------------------- */
 
-function parseJsonArray(input: any): string[] {
+function parseJsonArray(input: unknown): string[] {
   if (input == null) return []
   try {
     const v = typeof input === 'string' ? JSON.parse(input) : input
@@ -323,7 +323,7 @@ export async function toggleStatus(userId: string): Promise<boolean | null> {
     )
     const row = rows[0] as RowDataPacket | undefined
     if (!row || typeof row.is_active === 'undefined') return null
-    const prev = Boolean((row as any).is_active)
+    const prev = Boolean(row.is_active)
     const next = prev ? 0 : 1
     const [upd] = await conn.execute<ResultSetHeader>(
       `
@@ -393,12 +393,21 @@ export async function createUserWithTempPassword(
             [id],
         )
         })
-    } catch (err: any) {
-        if (err?.code === 'ER_DUP_ENTRY') {
+    } catch (err: unknown) {
+        const code = getErrorCode(err)
+        if (code === 'ER_DUP_ENTRY') {
             throw Object.assign(new Error('duplicate_user'), { code: 'duplicate_user', cause: err })
         }
         throw err
     }
 
     return { id, tempPassword }
+}
+
+
+function getErrorCode(e: unknown): string | undefined {
+  if (typeof e !== 'object' || e === null) return undefined
+  if (!('code' in e)) return undefined
+  const c = (e as { code?: unknown }).code
+  return typeof c === 'string' ? c : undefined
 }

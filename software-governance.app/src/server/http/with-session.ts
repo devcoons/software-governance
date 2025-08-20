@@ -12,10 +12,10 @@ export type WithSessionResult =
   | { ok: true; session: import('@/server/auth/types').SessionRecord }
   | { ok: false; status: number; body: { ok: false; error: string } }
 
-export function withSession<T extends (req: NextRequest, ctx: any, session: import('@/server/auth/types').SessionRecord) => Promise<Response>>(
+export function withSession<T extends (req: NextRequest, ctx: unknown, session: import('@/server/auth/types').SessionRecord) => Promise<Response>>(
   handler: T
 ) {
-  return withCookieContext(async (req: NextRequest, ctx?: any) => {
+  return withCookieContext(async (req: NextRequest, ctx?: unknown) => {
     // 1) Fast path: current session from SID
     const ss = await getCurrentSession(req)
     if (ss) {

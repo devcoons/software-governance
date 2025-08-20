@@ -2,8 +2,7 @@
 /* user-profile-repo.ts */
 /* ---------------------------------------------------------------------- */
 
-import type { RowDataPacket, PoolConnection } from 'mysql2/promise'
-import { query, withConnection, withTransaction, bufToUuid, exec } from '@/server/db/mysql-client'
+import {withTransaction } from '@/server/db/mysql-client'
 
 /* ---------------------------------------------------------------------- */
 

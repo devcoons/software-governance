@@ -28,7 +28,7 @@ async function UpdateUserProfile(first_name: string, last_name:string, phone_num
 
 export default function ProfileCard(profileDetails : DbUserProfile) {
     const router = useRouter()
-    let defaultProfile = profileDetails;
+    const defaultProfile = profileDetails;
     const [firstname, setFirstname] = useState(defaultProfile.first_name)
     const [lastname, setLastname] = useState(defaultProfile.last_name)
     const [phonenumber, setPhonenumber] = useState(defaultProfile.phone_number)
@@ -79,7 +79,7 @@ export default function ProfileCard(profileDetails : DbUserProfile) {
                 if (ok) router.refresh()
                     
                 }}>{saving ? 'Saving…' : 'Save'}</button>
-                <button className="btn btn-outline" disabled={!changed} onClick={(e)=>
+                <button className="btn btn-outline" disabled={!changed} onClick={()=>
                 {
                     setFirstname(defaultProfile.first_name);
                     setLastname(defaultProfile.last_name);

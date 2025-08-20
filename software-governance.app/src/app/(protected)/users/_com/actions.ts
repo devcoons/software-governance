@@ -12,7 +12,7 @@ export class SafeFetchError extends Error {
   }
 }
 
-async function safeFetch<T = any>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+async function safeFetch<T = unknown>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const res = await fetch(input, {
     ...init,
     headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
@@ -31,10 +31,13 @@ async function safeFetch<T = any>(input: RequestInfo | URL, init?: RequestInit):
   }
 
   if (!res.ok) {
-    const msg =
-      (isJson && parsed && typeof (parsed as any).error === 'string'
-        ? (parsed as any).error
-        : `HTTP ${res.status}`) as string;
+    const msg = (() => {
+        if (isJson && parsed && typeof parsed === 'object' && 'error' in parsed) {
+        const e = (parsed as { error?: unknown }).error;
+        if (typeof e === 'string') return e;
+        }
+        return `HTTP ${res.status}`;
+     })();
     throw new SafeFetchError(msg, res.status, url, parsed);
   }
 
@@ -79,7 +82,7 @@ export async function toggleUserStatus(userId: string, totp: string): Promise<vo
 
 export async function changeUserRole(
   userId: string,
-  role: 'admin' | 'user' | 'viewer',
+  role: string,
   totp: string
 ): Promise<void> {
   await safeFetch('/api/users/change-role', {

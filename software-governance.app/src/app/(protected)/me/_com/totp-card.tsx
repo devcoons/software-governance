@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 export default function TotpSetupCard({ initialEnabled = false }: { initialEnabled?: boolean }) {
   const [enabled, setEnabled] = useState(!!initialEnabled)
@@ -26,7 +27,8 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         cache: 'no-store',
         credentials: 'same-origin',
       })
-      const data = await res.json().catch(() => ({} as any))
+      type TotpSetupResponse = { ok: boolean; otpauthUrl?: string; enabled?: boolean; error?: string }
+        const data = (await res.json().catch(() => ({}))) as Partial<TotpSetupResponse>
       if (!res.ok || !data?.otpauthUrl) {
         setStatus(`❌ ${data?.error ?? 'Could not get TOTP QR.'}`)
         return
@@ -126,7 +128,13 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         {showQR && qrData && (
           <div className="mt-3 text-center">
             {qrData.startsWith('data:image') ? (
-              <img src={qrData} alt="TOTP QR" className="inline-block border rounded p-2 bg-white" />
+              <Image
+  src={qrData}
+  alt="TOTP QR"
+  width={200}
+  height={200}
+  className="inline-block border rounded p-2 bg-white"
+/>
             ) : (
               <div className="alert alert-info text-xs break-all">{qrData}</div>
             )}

@@ -14,7 +14,7 @@ import { getUserProfileById } from '@/server/db/user-profile-repo'
 
 /* ---------------------------------------------------------------------- */
 
-export const GET = withSession(async (req: NextRequest, _ctx, session) => {
+export const GET = withSession(async (req: NextRequest) => {
 
     const url = new URL(req.url)
     const qs = Object.fromEntries(url.searchParams.entries())

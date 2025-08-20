@@ -4,10 +4,6 @@
 
 import appConfig from '@/config.e'
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { ReactNode } from 'react'
-import { redirect } from 'next/navigation'
-import { getCurrentSession } from './server/auth/ctx'
 
 /* ---------------------------------------------------------------------- */
 
@@ -17,7 +13,8 @@ const BRIDGE_PATH = '/api/session-bridge'
 const ASSET_RE = /\.(?:js|mjs|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|map)$/i
 
 type HealthCache = { ts: number; ok: boolean }
-const g = globalThis as any
+
+const g = globalThis as { __EDGE_HEALTH__?: HealthCache }
 let edgeHealthCache: HealthCache | null = g.__EDGE_HEALTH__ ?? null
 
 /* ---------------------------------------------------------------------- */

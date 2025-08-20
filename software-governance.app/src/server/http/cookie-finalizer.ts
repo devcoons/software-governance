@@ -21,8 +21,8 @@ export function queueCookie(spec: CookieSpec) {
 
 /* ---------------------------------------------------------------------- */
 
-export function withCookieContext<T extends (req: NextRequest, ctx?: any) => Promise<Response | any>> (handler: T): T {
-    return (async (req: NextRequest, ctx?: any) => {
+export function withCookieContext<T extends (req: NextRequest, ctx?: unknown) => Promise<Response | NextResponse | unknown>>(handler: T): T {
+    return (async (req: NextRequest, ctx?: unknown) => {
         return cookieALS.run([], async () => {
             const result = await handler(req, ctx)
 
@@ -33,7 +33,7 @@ export function withCookieContext<T extends (req: NextRequest, ctx?: any) => Pro
             } else if (result instanceof Response) {
                 res = new NextResponse(result.body, {
                 status: result.status,
-                statusText: (result as any).statusText,
+                statusText: result.statusText,
                 headers: result.headers,
                 })
             } else {

@@ -4,7 +4,6 @@
 
 import type { RowDataPacket, PoolConnection } from 'mysql2/promise'
 import { query, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
-import { use } from 'react'
 
 /* ---------------------------------------------------------------------- */
 

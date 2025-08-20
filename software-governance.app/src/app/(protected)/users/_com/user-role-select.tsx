@@ -5,11 +5,9 @@ import { useEffect, useState } from 'react';
 export type Role = 'admin' | 'user' | 'viewer';
 
 export default function RoleSelect({
-  userId,
   initialRole,
   onChange,
 }: {
-  userId: string;
   initialRole: Role;
   onChange?: (newRole: Role, revert: () => void, done: () => void) => void;
 }) {

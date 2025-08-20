@@ -4,7 +4,6 @@
 
 import NavBar from './chrome-navbar'
 import FooterBar from './chrome-footer'
-import { AppSessionClaims } from '@/server/auth/types'
 import { SessionView } from '@/server/auth/session-view'
 
 /* ---------------------------------------------------------------------- */

@@ -4,8 +4,8 @@
 
 import mysql from 'mysql2/promise'
 import config from '../src/config'
-import { hashPassword } from '../src/server/crypto/password'
 import { randomUUID } from 'node:crypto'
+import { hashPassword } from '@/libs/password'
 
 /* ---------------------------------------------------------------------- */
 

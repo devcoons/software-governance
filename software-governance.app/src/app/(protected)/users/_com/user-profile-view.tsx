@@ -9,15 +9,17 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-function normalizeProfile(input: any): DbUserProfile {
-  const raw = input?.data ?? input ?? {}
+function normalizeProfile(input: unknown): DbUserProfile {
+  const obj = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
+  const raw = (('data' in obj && typeof obj.data === 'object' && obj.data !== null) ? obj.data : obj) as Record<string, unknown>;
+
   return {
-    user_id: raw.user_id ?? raw.userId ?? '',
-    first_name: raw.first_name ?? raw.firstName ?? '',
-    last_name: raw.last_name ?? raw.lastName ?? '',
-    phone_number: raw.phone_number ?? raw.phoneNumber ?? '',
-    timezone: raw.timezone ?? raw.timeZone ?? '',
-  } as DbUserProfile
+    user_id: String((raw.user_id ?? raw.userId) ?? ''),
+    first_name: String((raw.first_name ?? raw.firstName) ?? ''),
+    last_name: String((raw.last_name ?? raw.lastName) ?? ''),
+    phone_number: String((raw.phone_number ?? raw.phoneNumber) ?? ''),
+    timezone: String((raw.timezone ?? raw.timeZone ?? raw.tz) ?? ''),
+  };
 }
 
 export default function UserProfileView({ userId, email, onClose }: Props) {
@@ -57,9 +59,10 @@ export default function UserProfileView({ userId, email, onClose }: Props) {
           const payload = await res.json().catch(() => ({}))
           const normalized = normalizeProfile(payload)
           setProfile(normalized)
-        } catch (e: any) {
+        } catch (e: unknown) {
           if (signal.aborted) return
-          setError(e?.message ?? 'failed_to_load_profile')
+          const msg = e instanceof Error ? e.message : 'failed_to_load_profile'
+          setError(msg)
           setProfile(null)
         } finally {
           if (!signal.aborted) setLoading(false)

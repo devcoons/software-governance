@@ -27,7 +27,8 @@ function normalizeList(input: string[] | string, caseSensitive: boolean): string
 /* ---------------------------------------------------------------------- */
 
 function claimsList(sess: SessionRecord | null | undefined, key: 'roles' | 'permissions', caseSensitive: boolean): string[] {
-  const raw = (sess?.claims as any)?.[key]
+    const claims = (sess?.claims ?? {}) as Record<string, unknown>;
+    const raw = claims[key];
   if (!Array.isArray(raw)) return []
   return normalizeList(raw, caseSensitive)
 }
@@ -74,4 +75,37 @@ export function hasPermissions(
   const caseSensitive = opts?.caseSensitive ?? false
   const have = claimsList(sess, 'permissions', caseSensitive)
   return hasList(have, perms, opts)
+}
+
+/* ---------------------------------------------------------------------- */
+
+export function getStringClaim(claims: unknown, key: string): string | undefined {
+  if (typeof claims !== 'object' || claims === null) return undefined;
+  const v = (claims as Record<string, unknown>)[key];
+  return typeof v === 'string' ? v : undefined;
+}
+
+/* ---------------------------------------------------------------------- */
+
+export function geIntClaim(claims: unknown, key: string): number | undefined {
+  if (typeof claims !== 'object' || claims === null) return undefined;
+  const v = (claims as Record<string, unknown>)[key];
+  return typeof v === 'number' ? v : undefined;
+}
+
+/* ---------------------------------------------------------------------- */
+
+export function getStringArrayClaim(claims: unknown, key: string): string[] {
+  if (typeof claims !== 'object' || claims === null) return [];
+  const v = (claims as Record<string, unknown>)[key];
+  if (Array.isArray(v)) {
+    // Allow string arrays; coerce other element types to strings defensively
+    return v.filter(x => typeof x === 'string') as string[];
+  }
+  // Some backends encode arrays as comma-separated strings; accept that too
+  if (typeof v === 'string') {
+    const arr = v.split(',').map(s => s.trim()).filter(Boolean);
+    return arr;
+  }
+  return [];
 }

@@ -4,10 +4,11 @@ import { useRef, useState } from 'react';
 
 type CreateUserOk = { ok: true; password: string };
 type CreateUserErr = { ok: false; error?: string };
-type CreateUserResponse = CreateUserOk | CreateUserErr;
 
 function isCreateUserOk(x: unknown): x is CreateUserOk {
-  return !!x && typeof x === 'object' && (x as any).ok === true && typeof (x as any).password === 'string';
+  if (typeof x !== 'object' || x === null) return false;
+  const obj = x as { ok?: unknown; password?: unknown };
+  return obj.ok === true && typeof obj.password === 'string';
 }
 
 export default function RegisterForm() {
@@ -61,7 +62,7 @@ export default function RegisterForm() {
       setTempInfo({ email: email, password: data.password });
       dialogRef.current?.showModal?.();
       form.reset();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If server actually processed it, a retry guard on backend prevents duplicates.
       setError('Network error. Please check connection and try again.');
       console.error('create user error', err);

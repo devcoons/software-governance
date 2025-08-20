@@ -17,7 +17,6 @@ type LoginBody = {
 const base = { path: '/', sameSite: 'lax' as const, secure: true }
 const sidCookieName = app.SESSION_COOKIE ?? 'sid'
 const ridCookieName = app.REFRESH_COOKIE ?? 'rid'
-const hintCookieName = 'sid_hint'
 
 export const POST = withCookieContext(async (req: NextRequest) => {
     const url = new URL(req.url)

@@ -11,7 +11,10 @@ type Client = Redis
 
 /* ---------------------------------------------------------------------- */
 
-const g = globalThis as any
+const g = globalThis as {
+  __REDIS_CLIENT__?: Client | null;
+  __REDIS_LAST_ERROR__?: string | null;
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -20,19 +23,21 @@ let lastError: string | null = g.__REDIS_LAST_ERROR__ ?? null
 
 /* ---------------------------------------------------------------------- */
 
-function attachListeners(c: Client) {
-  const key = '__LISTENERS_ATTACHED__'
-  if ((c as any)[key]) return
-  ;(c as any)[key] = true
+const _attached = new WeakSet<Client>();
 
-  c.on('error', (err: any) => {
-    lastError = String(err?.message ?? err)
-    g.__REDIS_LAST_ERROR__ = lastError
-  })
+function attachListeners(c: Client) {
+  if (_attached.has(c)) return;
+  _attached.add(c);
+
+  c.on('error', (err: unknown) => {
+    // preserve the exact message behavior, but without `any`
+    lastError = String((err as { message?: unknown })?.message ?? err);
+    g.__REDIS_LAST_ERROR__ = lastError;
+  });
 
   c.on('end', () => {
-    g.__REDIS_LAST_ERROR__ = lastError
-  })
+    g.__REDIS_LAST_ERROR__ = lastError;
+  });
 }
 
 /* ---------------------------------------------------------------------- */
@@ -74,8 +79,9 @@ export async function pingRedis(): Promise<{ ok: boolean; details?: string }> {
     await c.ping()
     const ms = Date.now() - t0
     return { ok: true, details: `pong ${ms}ms` }
-  } catch (e: any) {
-    const msg = String(e?.message || e) || lastError || 'redis error'
+  } catch (e: unknown) {
+    const msg = String((e as { message?: unknown })?.message ?? e) || lastError || 'redis error';
+
     return { ok: false, details: msg }
   }
 }

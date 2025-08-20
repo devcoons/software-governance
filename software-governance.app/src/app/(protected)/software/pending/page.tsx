@@ -3,7 +3,6 @@
 /* ---------------------------------------------------------------------- */
 
 import Chrome from '@/app/_com/chrome';
-import ChromeLight from '@/app/_com/chrome-light';
 import { toSessionView } from '@/app/_com/utils';
 import { getSessionOrBridge } from '@/server/auth/ctx';
 

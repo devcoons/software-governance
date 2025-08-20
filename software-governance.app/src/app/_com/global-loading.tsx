@@ -117,9 +117,9 @@ export default function RouteLoadingOverlay() {
     window.addEventListener('beforeunload', onBeforeUnload);
 
     return () => {
-      document.removeEventListener('click', onAnchorClick, { capture: true } as any);
+      document.removeEventListener('click', onAnchorClick, { capture: true });
       window.removeEventListener('popstate', onPopState);
-      window.removeEventListener('beforeunload', onBeforeUnload as any);
+      window.removeEventListener('beforeunload', onBeforeUnload );
       history.pushState = origPush;
       history.replaceState = origReplace;
       clearAll();

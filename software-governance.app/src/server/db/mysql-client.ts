@@ -12,7 +12,7 @@ import mysql, {
 /* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
 
-const g = globalThis as any
+const g = globalThis as { __MYSQL_POOL__?: Pool }
 let pool: Pool | null = g.__MYSQL_POOL__ ?? null
 
 /* ---------------------------------------------------------------------- */
@@ -42,7 +42,7 @@ function getPool(): Pool {
 
 export async function query<T = RowDataPacket[]>(
   sql: string,
-  params?: any[]
+  params?: ReadonlyArray<unknown>
 ): Promise<T> {
   const [rows] = await getPool().execute(sql, params)
   return rows as T
@@ -52,7 +52,7 @@ export async function query<T = RowDataPacket[]>(
 
 export async function exec(
   sql: string,
-  params?: any[]
+  params?: ReadonlyArray<unknown>
 ): Promise<ResultSetHeader> {
   const [res] = await getPool().execute<ResultSetHeader>(sql, params)
   return res
@@ -99,17 +99,37 @@ export async function pingDb(): Promise<{ ok: boolean; details?: string }> {
     const conn = await p.getConnection()
     try { await conn.query('SELECT 1') } finally { conn.release() }
     return { ok: true, details: `ping ${Date.now() - t0}ms` }
-  } catch (e: any) {
-    return { ok: false, details: String(e?.message || e) }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : e 
+    return { ok: false, details: String(msg) }
   }
 }
 
 /* ---------------------------------------------------------------------- */
 
-export function bufToUuid(b: any): string {
-  if (!b) return ''
-  if (typeof b === 'string') return b
-  const hex = Buffer.isBuffer(b) ? b.toString('hex') : Buffer.from(b).toString('hex')
-  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-')
+export function bufToUuid(b: unknown): string {
+    if (!b) return ''
+    if (typeof b === 'string') return b
+
+    let buf: Buffer
+    if (Buffer.isBuffer(b)) {
+        buf = b
+    } else if (ArrayBuffer.isView(b)) {
+        const v = b as ArrayBufferView
+        buf = Buffer.from(v.buffer as ArrayBuffer, v.byteOffset, v.byteLength)
+    } else if (b instanceof ArrayBuffer) {
+        buf = Buffer.from(new Uint8Array(b))
+    } else {
+        return ''
+    }
+
+    const hex = buf.toString('hex')
+    return [
+        hex.slice(0, 8),
+        hex.slice(8, 12),
+        hex.slice(12, 16),
+        hex.slice(16, 20),
+        hex.slice(20),
+    ].join('-')
 }
 

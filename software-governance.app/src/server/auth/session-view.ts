@@ -1,7 +1,7 @@
-import { AppSessionClaims } from "@/server/auth/types"
+import { AppSessionClaims, SessionClaims } from "@/server/auth/types"
 
 // src/auth/session-view.ts
 export type SessionView = {
   userId: string
-  claims?: AppSessionClaims
+  claims?: SessionClaims
 } | null

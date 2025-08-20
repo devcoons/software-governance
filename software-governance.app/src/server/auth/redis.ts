@@ -278,38 +278,45 @@ export const redisStore = {
         const c = getClient()
         if (c.status === 'wait' || c.status === 'end') await c.connect()
         const ttlSec = Math.max(1, Math.floor((rec.exp - Date.now()) / 1000))
-        console.log('[SESS:put] sid=', rec.sid, 'uid=', rec.user_id, 'ttlSec=', ttlSec, 'parent_rid=', (rec as any).parent_rid || null)
+        console.log('[SESS:put] sid=', rec.sid, 'uid=', rec.user_id, 'ttlSec=', ttlSec, 'parent_rid=', (rec as { parent_rid?: string }).parent_rid ?? null)
 
         const tx = c.multi()
         tx.set(sKey(rec.sid), JSON.stringify(rec), 'EX', ttlSec)
         tx.sadd(uSKey(rec.user_id), rec.sid)
         tx.expire(uSKey(rec.user_id), Number(config.REFRESH_IDLE_TTL_SECONDS))
 
-        const parentRid = (rec as any).parent_rid as string | undefined
+        const parentRid = rec.parent_rid
         if (parentRid && parentRid.length > 0) {
             const mapKey = rid2sidKey(parentRid)
             console.log('[SESS:put] updating rid→sid mapping:', parentRid, '→', rec.sid)
             tx.get(mapKey)
-            tx.exec = (((origExec: { apply: (arg0: any) => any }) => async function patchedExec(this: any) {
-                const replies = await origExec.apply(this)
-                const arr = replies as Array<[Error | null, any]>
-                const getIdx = arr.length - 1
-                const prevSid: string | null = arr[getIdx]?.[1] ?? null
 
-                const tx2 = c.multi()
-                tx2.set(mapKey, rec.sid)
-                if (prevSid && prevSid !== rec.sid) {
-                    console.log('[SESS:put] replacing old SID for RID:', parentRid, 'oldSid=', prevSid)
-                    tx2.del(sKey(prevSid))
-                    tx2.srem(uSKey(rec.user_id), prevSid)
-                }
-                await tx2.exec()
-                return replies
-            }) as any)(tx.exec)
+            type TxReply = Array<[Error | null, unknown]>
+            const repliesNullable = (await tx.exec()) as TxReply | null
+
+            let prevSid: string | null = null
+            if (repliesNullable && repliesNullable.length > 0) {
+                const getIdx = repliesNullable.length - 1
+                const pair = repliesNullable[getIdx]
+                const val = pair?.[1]
+                if (typeof val === 'string') prevSid = val
+            }
+
+            // Follow-up tx to repair the rid→sid map and clean old SID if needed
+            const tx2 = c.multi()
+            tx2.set(mapKey, rec.sid)
+            if (prevSid && prevSid !== rec.sid) {
+                console.log('[SESS:put] replacing old SID for RID:', parentRid, 'oldSid=', prevSid)
+                tx2.del(sKey(prevSid))
+                tx2.srem(uSKey(rec.user_id), prevSid)
+            }
+            await tx2.exec()
+            console.log('[SESS:put] done')
+            return
+        } else {
+            await tx.exec()
+            console.log('[SESS:put] done')
         }
-
-        await tx.exec()
-        console.log('[SESS:put] done')
     },
 
     /* ---------------------------------------------------------------------- */
@@ -460,26 +467,30 @@ export const redisStore = {
         console.log('[RF:rotate] ARGS=', args)
 
         const run = async (): Promise<{ ok: boolean; rid?: string; code?: number; userId?: string; remember?: boolean; absExpAt?: number }> => {
-            let result: any
+            type LuaResult = unknown
+            let result: LuaResult
             try {
-                result = await (c as any).evalsha(sha, keys.length, ...keys, ...args)
-            } catch (e: any) {
-                const msg = String(e?.message ?? e)
-                console.warn('[RF:rotate] evalsha error:', msg)
-                if (msg.includes('NOSCRIPT')) {
-                    rotateSha = null
-                    const freshSha = await ensureRotateSha(c)
-                    result = await (c as any).evalsha(freshSha, keys.length, ...keys, ...args)
-                } else {
-                    throw e
-                }
+            // ioredis exposes evalsha on the client; no `any` needed
+            result = await c.evalsha(sha, keys.length, ...keys, ...args)
+            } catch (e: unknown) {
+            const msg = String((e as { message?: unknown })?.message ?? e)
+            console.warn('[RF:rotate] evalsha error:', msg)
+            if (msg.includes('NOSCRIPT')) {
+                rotateSha = null
+                const freshSha = await ensureRotateSha(c)
+                result = await c.evalsha(freshSha, keys.length, ...keys, ...args)
+            } else {
+                throw e
             }
+            }
+
             console.log('[RF:rotate] LUA result=', result)
-            const code = Number(result?.[0])
-            const userId = result?.[1] as string | undefined
-            const remember = String(result?.[2] ?? '0') === '1'
-            const absExpAt = Number(result?.[3]) || 0
-            const ridOut = typeof result?.[4] === 'string' ? (result[4] as string) : undefined
+            const arr = Array.isArray(result) ? result : []
+            const code = Number(arr[0])
+            const userId = typeof arr[1] === 'string' ? arr[1] : undefined
+            const remember = String(arr[2] ?? '0') === '1'
+            const absExpAt = typeof arr[3] === 'number' ? arr[3] : Number(arr[3] ?? 0) || 0
+            const ridOut = typeof arr[4] === 'string' ? arr[4] : undefined
 
             if (code === 1 || code === 2) {
                 console.log('[RF:rotate] SUCCESS code=', code, 'effectiveRid=', ridOut)
@@ -628,7 +639,7 @@ async function getSidByRidInternal(rid: string): Promise<string | null> {
         const sid = sidSet[i]
         const rec = safeParse<SessionRecord & { parent_rid?: string }>(raw)
         if (!rec) continue
-        if ((rec as any).parent_rid === rid) {
+        if (rec.parent_rid === rid) {
             candidate = sid
              break
         }

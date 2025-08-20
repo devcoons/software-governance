@@ -2,7 +2,6 @@
 /* Filepath: src/types/provider.ts */
 /* ---------------------------------------------------------------------- */
 
-import { getSessionOrBridge } from "@/server/auth/ctx"
 import { AppSessionClaims } from "@/server/auth/types"
 import { DbUser } from "@/server/db/user-repo"
 
@@ -51,6 +50,7 @@ export type LoginResult =
 /* ---------------------------------------------------------------------- */
 
   export function claimsFromDbUser(u: DbUser): AppSessionClaims {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...rest } = u
     return { ...rest }
   }
