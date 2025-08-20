@@ -207,6 +207,7 @@ export async function listAllUusersVisual(): Promise<DbUserVisual[]> {
   u.email,
   u.is_active,
   u.roles,
+  u.last_login_at,
   p.first_name,
   p.last_name
 FROM users AS u
