@@ -4,6 +4,7 @@
 
 import type { RowDataPacket, PoolConnection } from 'mysql2/promise'
 import { query, withConnection, withTransaction, bufToUuid } from '@/server/db/mysql-client'
+import { DbUserVisual, DbUserVisualRow } from './user-repo'
 
 /* ---------------------------------------------------------------------- */
 
@@ -169,4 +170,50 @@ export async function updateUserProfileById(
     if (!p) throw new Error('profile_not_found_after_update')
     return p
   })
+}
+
+/* ---------------------------------------------------------------------- */
+
+function parseJsonArray(input: unknown): string[] {
+  if (input == null) return []
+  try {
+    const v = typeof input === 'string' ? JSON.parse(input) : input
+    return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+
+function rowToUserLite(row: DbUserVisualRow): DbUserVisual {
+  return {
+    id: bufToUuid(row.id),
+    email: String(row.email),
+    is_active: Boolean(row.is_active),
+    roles: parseJsonArray(row.roles),
+    first_name: row.first_name ? String(row.first_name) : '',
+    last_name: row.last_name ? String(row.last_name) : '',
+    last_login_at: row.last_login_at ? String(row.last_login_at) : null,
+    permissions: parseJsonArray(row.permissions),
+
+  }
+}
+
+export async function listAllUusersVisual(): Promise<DbUserVisual[]> {
+  const rows = await query<DbUserVisualRow[]>(
+    `
+    SELECT
+  u.id,
+  u.email,
+  u.is_active,
+  u.roles,
+  p.first_name,
+  p.last_name
+FROM users AS u
+LEFT JOIN user_profile AS p
+  ON p.user_id = u.id;
+    `
+  )
+  if (!rows || rows.length === 0) return []
+  return rows.map(rowToUserLite)
 }

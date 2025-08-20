@@ -4,21 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
 import { Trash2, KeyRound, User, CircleCheckBigIcon, Ban } from 'lucide-react';
-import RoleSelect, { Role } from './user-role-select'
-import TOTPModal from '@/app/_com/totp-modal-insert-pin'
-import EnableTOTPRequiredModal from '@/app/_com/totp-modal-warning'
-import { useManualLoading } from '@/app/_com/manual-loading'
-import UserProfileView from './user-profile-view'
-
-
-import {
-  deleteUser,
-  resetPassword,
-  changeUserRole,
-  currentAdminHasTOTP,
-  toggleUserStatus,
-} from './actions'
-import { DbUserLite } from '@/server/db/user-repo';
+import { Role } from './user-role-select'
+import { DbUserLite, DbUserVisual } from '@/server/db/user-repo';
 
 
 type UserRow = {
@@ -31,10 +18,10 @@ type UserRow = {
 };
 
 const PAGE_SIZE = 7 as const;
-type SortKey = 'email' | 'role' | 'totp' | 'force' | 'created' | 'lastlogin' | 'accountsts';
+type SortKey = 'fname' | 'lname' | 'email' | 'role' | 'lastlogin' | 'accountsts';
 type SortDir = 'asc' | 'desc';
 
-function normalizeRole(u: DbUserLite): Role {
+function normalizeRole(u: DbUserVisual): Role {
   return (u.roles?.[0] ?? 'user') as Role;
 }
 function fmtDate(x: UserRow['createdAt'] | null) {
@@ -47,74 +34,10 @@ function fmtDate(x: UserRow['createdAt'] | null) {
   }
 }
 
-function OneButtonModal({
-  title,
-  text,
-  onClose,
-}: {
-  title: string;
-  text: string;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="card bg-base-100 w-full max-w-md shadow-xl">
-        <div className="card-body">
-          <h3 className="card-title">{title}</h3>
-          <p className="text-sm opacity-80">
-            {text}
-          </p>
-        
-          <div className="card-actions justify-end mt-4">
-            <button className="btn btn-primary" onClick={onClose}>
-             Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Minimal one-time password modal (inline) */
-function OneTimePasswordModal({
-  email,
-  password,
-  onClose,
-}: {
-  email: string;
-  password: string;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="card bg-base-100 w-full max-w-md shadow-xl">
-        <div className="card-body">
-          <h3 className="card-title">Temporary password created</h3>
-          <p className="text-sm opacity-80">
-            Share this password with <span className="font-semibold">{email}</span> securely.
-            It will be shown only once.
-          </p>
-          <div className="mt-4 p-3 rounded-box bg-base-200 font-mono text-lg break-all select-all">
-            {password}
-          </div>
-          <div className="card-actions justify-end mt-4">
-            <button className="btn btn-primary" onClick={onClose}>
-              I’ve saved it
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function UsersTable({
   users,
-  isAdmin,
 }: {
-  users: DbUserLite[] ;
-  isAdmin: boolean;
+  users: DbUserVisual[] ;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -191,125 +114,20 @@ const handleViewProfile = (userId: string, email: string) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, sortKey, sortDir, page]);
 
-  /** Ask for TOTP; supports a cancel hook to revert UI when user cancels */
-  const askForTOTP = async (
-    action: (pin: string) => Promise<void>,
-    onCancel?: () => void
-  ) => {
-    try {
-      const hasTOTP = await currentAdminHasTOTP();
-      if (!hasTOTP) {
-        setRequireEnableTOTP(true);
-        if (onCancel) onCancel(); // revert role UI if we opened from role change
-        return;
-      }
-      setTotpModal({ action, onCancel });
-    } catch {
-      if (onCancel) onCancel();
-     
-    }
-  };
-
-
-  const handleResetPassword = (userId: string, email: string) => {
-    askForTOTP(async (pin) => {
-      const new_pwd = await resetPassword(userId, pin);
-      if (new_pwd) 
-      {
-        setPasswordModal({ email, password: new_pwd ,onClose:()=>{setPasswordModal(null);
-  router.refresh()}});
-      }
-      else 
-        {
-          setMessageModal({title:"Failure",text:"Unfortunately the operation failed. Please try again later..",onClose:()=>{setMessageModal(null);
-  router.refresh()}})
-        }
-    });
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    askForTOTP(async (pin) => {
-      await deleteUser(userId, pin);
-      router.refresh();
-    });
-  };
-
-  const { show, hide } = useManualLoading();
-
-
-  const changeUserStatus = (userId: string) =>
-  {
-    askForTOTP(async (pin) => {
-      await toggleUserStatus(userId,pin);
-      router.refresh();
-    });
-  };
-  
-
-
-
-  const handleChangeRole = (
-    userId: string,
-    oldRole: string,
-    newRole: string,
-    revert: () => void,
-    done: () => void
-  ) => {
-    const onCancel = () => {
-      try {
-        revert();
-      } finally {
-        done();
-      }
-    };
-
-    askForTOTP(
-      async (pin) => {
-        try {
-          await changeUserRole(userId, newRole, pin);
-          setRoleErrors((prev) => {
-            const copy = { ...prev };
-            delete copy[userId];
-            return copy;
-          });
-          
-        } catch (err: unknown) {
-          revert();
-          const msg = err instanceof Error ? err.message : 'Failed to update role'
-          setRoleErrors((prev) => ({
-            ...prev,
-            [userId]: msg,
-          }));
-          setTimeout(() => {
-            setRoleErrors((prev) => {
-              const copy = { ...prev };
-              delete copy[userId];
-              return copy;
-            });
-          }, 5000);
-        } finally {
-          done();
-          router.refresh();
-        }
-      },
-      onCancel
-    );
-  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((u) => {
       const role = normalizeRole(u);
-      return `${u.email} ${role} ${u.totp_enabled ? 'yes' : 'no'} ${
-        u.force_password_change ? 'yes' : 'no'
-      } ${fmtDate(u.created_at)}`.toLowerCase().includes(q);
+      return `${u.email} ${role} ${u.first_name} ${u.first_name}
+      } ${fmtDate(u.last_login_at)}`.toLowerCase().includes(q);
     });
   }, [users, query]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
-    const cmp = (a: DbUserLite, b: DbUserLite) => {
+    const cmp = (a: DbUserVisual, b: DbUserVisual) => {
       let av: string | number = '';
       let bv: string | number = '';
       switch (sortKey) {
@@ -321,17 +139,17 @@ const handleViewProfile = (userId: string, email: string) => {
           av = normalizeRole(a);
           bv = normalizeRole(b);
           break;
-        case 'totp':
-          av = a.totp_enabled ? 1 : 0;
-          bv = b.totp_enabled ? 1 : 0;
+        case 'fname':
+          av = a.first_name ? 1 : 0;
+          bv = b.first_name ? 1 : 0;
           break;
-        case 'force':
-          av = a.force_password_change ? 1 : 0;
-          bv = b.force_password_change ? 1 : 0;
+        case 'lname':
+          av = a.last_name ? 1 : 0;
+          bv = b.last_name ? 1 : 0;
           break;
-        case 'created':
-          av = new Date(a.created_at).getTime();
-          bv = new Date(b.created_at).getTime();
+        case 'lastlogin':
+          av = a.last_login_at? new Date(a.last_login_at).getTime(): '';
+          bv = b.last_login_at? new Date(b.last_login_at).getTime(): '';
           break;
       }
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
@@ -363,7 +181,7 @@ const handleViewProfile = (userId: string, email: string) => {
       if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
       else {
         setSortKey(key);
-        setSortDir(key === 'created' ? 'desc' : 'asc');
+        setSortDir(key === 'role' ? 'desc' : 'asc');
       }
       setPage(1);
     };
@@ -426,15 +244,12 @@ const handleViewProfile = (userId: string, email: string) => {
         <table className="table table-md">
           <thead>
             <tr>
-              <SortHeader label="Email" keyName="email" className="w-8/24" />
-              <SortHeader label="Role" keyName="role" className="w-4/24 text-center" />
-              
+              <SortHeader label="First Name" keyName="fname" className="w-4/24" />
+              <SortHeader label="Last Name" keyName="lname" className="w-4/24" />
+              <SortHeader label="Email" keyName="email" className="w-4/24" />
+              <SortHeader label="Role" keyName="role" className="w-4/24 text-center" />   
               <SortHeader label="Account Status" keyName="accountsts" className="w-2/24 text-center" />
-              <SortHeader label="Password Status" keyName="force" className="w-2/24 text-center" />
-              <SortHeader label="TOTP" keyName="totp" className="w-2/24 text-center" />
-               <SortHeader label="Created" keyName="created" className="w-4/24 text-center" />
-              <SortHeader label="Last Login" keyName="lastlogin" className="w-4/24 text-center" />
-              {isAdmin && <th className="w-1/24 text-center">Actions</th>}
+              <SortHeader label="Last Login" keyName="lastlogin" className="w-4/24 text-center" />   
             </tr>
           </thead>
           <tbody>
@@ -442,76 +257,23 @@ const handleViewProfile = (userId: string, email: string) => {
               const role = normalizeRole(u);
               return (
                 <tr key={u.id} className="hover:bg-base-200/70">
+                  <td>{u.first_name}</td>
+                  <td>{u.last_name}</td>
                   <td>{u.email}</td>
                   <td className="text-center">
-                    {isAdmin ? (
-                      <>
-                        <RoleSelect
-                         
-                          initialRole={role}
-                          onChange={(newRole, revert, done) =>
-                            handleChangeRole(u.id, role, newRole, revert, done)
-                          }
-                        />
-                        {roleErrors[u.id] && (
-                          <div className="text-error text-xs mt-1">{roleErrors[u.id]}</div>
-                        )}
-                      </>
-                    ) : (
-                      <span className="badge badge-outline">{role}</span>
-                    )}
+                      <span className="badge badge-outline">{role}</span>  
                   </td>
                   <td className="text-center">
-                  <button
-                        className={`btn btn-ghost btn-sm  ${u.is_active ? 'text-success' : 'text-error'}`}
-                        onClick={() => changeUserStatus(u.id)}
-                        title="Change status"
-                      >
-                         {u.is_active ? <CircleCheckBigIcon size={18}/> : <Ban size={18}/>}
-                         {u.is_active ? 'Active' : 'Deactivated'}
- </button>
-
-
+                    <div className={`badge ${u.is_active ? 'badge-success' : 'badge-warning'}`}>
+                      {u.is_active ?  'Active' : 'Deactivated' }</div>
                    </td>
-                  <td className="text-center">
-                    <div className={`badge ${u.force_password_change ? (u.temp_password_used_at ? 'badge-error' : 'badge-warning' ) : 'badge-neutral'}`}>
-                      {u.force_password_change ? (u.temp_password_used_at ? 'used' : 'temp' ) : 'valid'}</div>
-                      </td>
-
-                  <td className="text-center"><div className={`badge  ${u.totp_enabled ? 'badge-neutral' : 'badge-warning'}`}>{u.totp_enabled ? 'enabled' : 'disabled'}</div></td>
-                  <td className="text-center">{fmtDate(u.created_at)}</td>
                   <td className="text-center">{fmtDate(u.last_login_at)}</td>
-                  {isAdmin && (
-                    <td className="flex ">
-                        <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => handleViewProfile(u.id, u.email)}
-                        title="Profile"
-                      >
-                        <User size={20} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => handleResetPassword(u.id, u.email)}
-                        title="Reset password"
-                      >
-                        <KeyRound size={20} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm text-error"
-                        onClick={() => handleDeleteUser(u.id)}
-                        title="Delete user"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </td>
-                  )}
                 </tr>
               );
             })}
             {pageItems.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 6 : 5} className="text-center py-8 opacity-70">
+                <td colSpan={5} className="text-center py-8 opacity-70">
                   No users found.
                 </td>
               </tr>
@@ -552,63 +314,6 @@ const handleViewProfile = (userId: string, email: string) => {
         </div>
       </div>
 
-      {/* TOTP modal */}
-{/* TOTP modal */}
-{totpModal && (
-  <TOTPModal
-    onCancel={() => {
-      try {
-        totpModal.onCancel?.()
-      } finally {
-        setTotpModal(null)
-      }
-    }}
-    onSubmit={async (pin: string) => {
-      const act = totpModal?.action
-      if (!act) return
-
-      setTotpModal(null)
-      try {
-        show()                      // use the top-level hook values
-        await act(pin)
-      } finally {
-        hide()
-      }
-    }}
-  />
-)}
-
-
-      {/* Prompt to enable TOTP if admin doesn't have it */}
-      {requireEnableTOTP && (
-        <EnableTOTPRequiredModal onClose={() => setRequireEnableTOTP(false)} />
-      )}
-
-      {/* One-time password display after successful reset */}
-      {passwordModal && (
-        <OneTimePasswordModal
-          email={passwordModal.email}
-          password={passwordModal.password}
-          onClose={passwordModal.onClose || (() => setPasswordModal(null))}
-        />
-      )}
-
-      {messageModal && (
-        <OneButtonModal
-          title={messageModal.title}
-          text={messageModal.text}
-        
-          onClose={messageModal.onClose || (() => setMessageModal(null))}
-        />
-      )}
-
-{viewingUser && (
-    <UserProfileView
-        userId={viewingUser.id}
-        email={viewingUser.email}
-        onClose={() => setViewingUser(null)}
-    />
-)}
     </>
   );
 }

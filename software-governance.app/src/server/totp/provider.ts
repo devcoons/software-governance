@@ -39,7 +39,7 @@ export async function getOrCreateTotpUri(userId: string, issuer: string) {
 }
 
 export async function verifyTotpPin(userId: string, pin: string) {
-    return { ok: true as const }
+   // return { ok: true as const }
     const info = await getTotpInfo(userId)
     if (!info?.secret) return { ok: false as const, error: 'no_secret' as const }
     if (!checkCode(info.secret, String(pin ?? '').trim())) {
