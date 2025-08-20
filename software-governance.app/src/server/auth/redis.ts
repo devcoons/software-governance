@@ -1,7 +1,6 @@
-/* store-redis.ts */
 /* ---------------------------------------------------------------------- */
+/* Filepath: /src/server/auth/redis.ts */
 /* ---------------------------------------------------------------------- */
-
 
 import config from '@/config'
 import Redis from 'ioredis'
@@ -568,14 +567,12 @@ export const redisStore = {
 }
 
 /* ---------------------------------------------------------------------- */
-/* helpers for health/observability */
 
 export function getLastRedisError(): string | null {
     return lastRedisError
 }
 
 /* ---------------------------------------------------------------------- */
-
 
 async function getSidByRidInternal(rid: string): Promise<string | null> {
     const c = getClient()
@@ -672,7 +669,8 @@ async function getSidByRidInternal(rid: string): Promise<string | null> {
     return candidate
 }
 
-/* Query last refresh-ish timestamp for a given rid (poisoned→rotated_at, else created_at) */
+/* ---------------------------------------------------------------------- */
+
 export async function getRidLastRefreshAt(
     userId: string,
     rid: string
@@ -715,7 +713,8 @@ export async function getRidLastRefreshAt(
     return { ms, iso, source }
 }
 
-/* Best-effort helper used to salvage BUSY state by reading rotated_to directly */
+/* ---------------------------------------------------------------------- */
+
 async function getRotatedToFromOldRaw(userId: string, oldRid: string): Promise<string | null> {
     const c = getClient()
     if (c.status === 'wait' || c.status === 'end') await c.connect()
@@ -727,4 +726,5 @@ async function getRotatedToFromOldRaw(userId: string, oldRid: string): Promise<s
     return null
 }
 
+/* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */

@@ -1,5 +1,5 @@
-/* user-repo.ts */
 /* ---------------------------------------------------------------------- */
+/* Filepath: /src/server/db/user-repo.ts */
 /* ---------------------------------------------------------------------- */
 
 import type { RowDataPacket, PoolConnection, ResultSetHeader } from 'mysql2/promise'
@@ -138,6 +138,22 @@ export async function findUserById(id: string): Promise<DbUser | null> {
     LIMIT 1
     `,
     [id]
+  )
+  const row = rows[0]
+  return row ? rowToUser(row) : null
+}
+
+/* ---------------------------------------------------------------------- */
+
+export async function getUserIdByUsername(username: string): Promise<DbUser | null> {
+  const rows = await query<DbUserRow[]>(
+    `
+    SELECT ${USER_SELECT}
+    FROM users
+    WHERE username = ?
+    LIMIT 1
+    `,
+    [username]
   )
   const row = rows[0]
   return row ? rowToUser(row) : null

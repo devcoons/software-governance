@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------- */
-// app/api/admin/users/create/route.ts
+/* Filepath: src/app/api/(protected)/users/create/route.ts */
 /* ---------------------------------------------------------------------- */
 
 export const runtime = 'nodejs'
@@ -39,4 +39,5 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     return NextResponse.json({ ok: true, password: tempPassword }, { headers: { 'Cache-Control': 'no-store' } })
 })
 
+/* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */

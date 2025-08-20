@@ -50,7 +50,7 @@ const config: ConfigFlat = Object.freeze({
   PASSWORD_MIN_SIZE: 10,
   FORGOT_PASS_RATE_LIMIT: 10,
   DEBUGGING: true,
-  URL_PUBLIC: ["/login","/maintenance","/health","/login","/logout","/session-bridge"],
+  URL_PUBLIC: ["/forgot-password","/login","/maintenance","/forgot-reset","/health","/login","/logout","/session-bridge"],
   URL_PROTECTED: ["/approvals","/audit","/compliance","/dashboard","/logout","/me","/software/new","/software","/software/pending","/users","/users/register","/me/profile","/me/totp/enabled","/me/totp/setup","/me/totp/verify","/me/update-password","/users/change-role","/users/create","/users/delete","/users/profile","/users/reset-password"],
   URL_ADMIN: [],
 })

@@ -1,5 +1,10 @@
-// app/api/admin/users/reset-password/route.ts
+/* ---------------------------------------------------------------------- */
+/* Filepath: src/app/api/(protected)/users/reset-password/route.ts */
+/* ---------------------------------------------------------------------- */
+
 export const runtime = 'nodejs'
+
+/* ---------------------------------------------------------------------- */
 
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
@@ -10,10 +15,14 @@ import { redisStore } from '@/server/auth/redis'
 import { hasRoles } from '@/app/_com/utils'
 import { generatePassword, hashPassword } from '@/libs/password'
 
+/* ---------------------------------------------------------------------- */
+
 const Body = z.object({
     userId: z.string().min(1),
     totp: z.string().min(1),
 })
+
+/* ---------------------------------------------------------------------- */
 
 export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     if (!hasRoles(session, ['admin'])) {
@@ -41,3 +50,6 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     return NextResponse.json({ ok: true, password: new_password })
 })
+
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */

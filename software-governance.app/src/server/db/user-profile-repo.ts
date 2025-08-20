@@ -1,5 +1,5 @@
-/* user-profile-repo.ts */
 /* ---------------------------------------------------------------------- */
+/* Filepath: /src/server/db/user-profile-repo.ts */
 /* ---------------------------------------------------------------------- */
 
 import type { RowDataPacket, PoolConnection } from 'mysql2/promise'

@@ -1,6 +1,11 @@
-// app/api/me/update-password/route.ts
+/* ---------------------------------------------------------------------- */
+/* Filepath: src/app/api/(protected)/me/update-password/route.ts */
+/* ---------------------------------------------------------------------- */
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/* ---------------------------------------------------------------------- */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session' // wrapper we wrote earlier (inline refresh + ALS)
@@ -11,7 +16,8 @@ import { verifyPassword, hashPassword } from '@/libs/password'
 import { findUserById, updateUserPassword } from '@/server/db/user-repo' // implement updateUserPassword(userId, newHash)
 import { redisStore } from '@/server/auth/redis'
 
-// --- validation ---
+/* ---------------------------------------------------------------------- */
+
 const BodyZ = z.object({
     currentPassword: z.string().min(1, 'required'),
     newPassword: z
@@ -20,7 +26,10 @@ const BodyZ = z.object({
         .max(128, 'max_128'),
 })
 
+/* ---------------------------------------------------------------------- */
 const base = { path: '/', sameSite: 'lax' as const, secure: true }
+
+/* ---------------------------------------------------------------------- */
 
 export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     let body: unknown
@@ -84,3 +93,6 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     return NextResponse.json({ ok: true, reauth: true })
 })
+
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */

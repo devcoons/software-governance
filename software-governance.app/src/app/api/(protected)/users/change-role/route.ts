@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------- */
-// app/api/admin/users/change-role/route.ts
+/* Filepath: src/app/api/(protected)/users/change-role/route.ts */
 /* ---------------------------------------------------------------------- */
 
 export const runtime = 'nodejs'

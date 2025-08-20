@@ -1,22 +1,32 @@
-// app/api/auth/login/route.ts
+/* ---------------------------------------------------------------------- */
+/* Filepath: /src/app/api/(public)/login/route.ts */
+/* ---------------------------------------------------------------------- */
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/* ---------------------------------------------------------------------- */
 
 import app from '@/config'
 import { NextRequest, NextResponse } from 'next/server'
 import { withCookieContext, queueCookie } from '@/server/http/cookie-finalizer'
 import { sanitizeNext, login as loginService } from '@/server/auth/ctx'
 
+/* ---------------------------------------------------------------------- */
 
 type LoginBody = {
-  login: string
-  password: string
-  rememberMe?: boolean
+    login: string
+    password: string
+    rememberMe?: boolean
 }
+
+/* ---------------------------------------------------------------------- */
 
 const base = { path: '/', sameSite: 'lax' as const, secure: true }
 const sidCookieName = app.SESSION_COOKIE ?? 'sid'
 const ridCookieName = app.REFRESH_COOKIE ?? 'rid'
+
+/* ---------------------------------------------------------------------- */
 
 export const POST = withCookieContext(async (req: NextRequest) => {
     const url = new URL(req.url)
@@ -79,3 +89,6 @@ export const POST = withCookieContext(async (req: NextRequest) => {
         { headers: { 'Cache-Control': 'no-store' } },
     )
 })
+
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */

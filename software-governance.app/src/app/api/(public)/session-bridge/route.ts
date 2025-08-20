@@ -20,17 +20,6 @@ const ridOpts = { httpOnly: true, sameSite: 'lax' as const, secure: true, path: 
 
 /* ---------------------------------------------------------------------- */
 
-
-/* ---------------------------------------------------------------------- */
-
-
-
-/* ---------------------------------------------------------------------- */
-
-
-
-/* ---------------------------------------------------------------------- */
-
 export const GET = withCookieContext(async (req: NextRequest) => {
     const url = new URL(req.url)
     const next = url.searchParams.get('next') || '/'

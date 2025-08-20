@@ -1,12 +1,18 @@
-// app/api/me/profile/route.ts
+/* ---------------------------------------------------------------------- */
+/* Filepath: /src/app/api/(protected)/me/profile/route.ts */
+/* ---------------------------------------------------------------------- */
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/* ---------------------------------------------------------------------- */
 
 import { updateUserProfileById } from '@/server/db/user-profile-repo'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
 import { z } from 'zod'
 
+/* ---------------------------------------------------------------------- */
 
 const BodySchema = z.object({
     first_name: z.string().trim().max(100),
@@ -14,6 +20,8 @@ const BodySchema = z.object({
     phone_number: z.string().trim().max(32),
     timezone: z.string().trim().max(80),
 }).refine(obj => Object.keys(obj).length > 0, { message: 'empty_patch' })
+
+/* ---------------------------------------------------------------------- */
 
 export const POST = withSession(async (req: NextRequest, _ctx, session) => {
   // (Optional) CSRF: require a header that matches a non-HttpOnly cookie
@@ -57,3 +65,6 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     return NextResponse.json({ ok: false, error: 'update_failed' }, { status: 500 })
   }
 })
+
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */

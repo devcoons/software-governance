@@ -1,22 +1,30 @@
-// src/server/http/with-session.ts
+/* ---------------------------------------------------------------------- */
+/* Filepath: /src/server/http/with-session.ts */
+/* ---------------------------------------------------------------------- */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { withCookieContext, queueCookie } from '@/server/http/cookie-finalizer'
 import { getCurrentSession, getAndRefreshCurrentSession } from '@/server/auth/ctx'
 import app from '@/config'
 
+/* ---------------------------------------------------------------------- */
+
 const base = { path: '/', sameSite: 'lax' as const, secure: true }
 const sidOpts = { ...base, httpOnly: true }
 const ridOpts = { ...base, httpOnly: true }
+
+/* ---------------------------------------------------------------------- */
 
 export type WithSessionResult =
   | { ok: true; session: import('@/server/auth/types').SessionRecord }
   | { ok: false; status: number; body: { ok: false; error: string } }
 
+/* ---------------------------------------------------------------------- */
+
 export function withSession<T extends (req: NextRequest, ctx: unknown, session: import('@/server/auth/types').SessionRecord) => Promise<Response>>(
   handler: T
 ) {
   return withCookieContext(async (req: NextRequest, ctx?: unknown) => {
-    // 1) Fast path: current session from SID
     const ss = await getCurrentSession(req)
     if (ss) {
       return handler(req, ctx, ss)
@@ -38,3 +46,6 @@ export function withSession<T extends (req: NextRequest, ctx: unknown, session: 
     return NextResponse.json({ ok: false, error: reason }, { status: 401, headers: { 'Cache-Control': 'no-store' } })
   })
 }
+
+/* ---------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------- */

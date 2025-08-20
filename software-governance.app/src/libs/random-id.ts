@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------- */
-/* Filepath: src/libs/random-id.ts */
+/* Filepath: /src/libs/random-id.ts */
 /* ---------------------------------------------------------------------- */
 
 import { randomBytes } from 'node:crypto'

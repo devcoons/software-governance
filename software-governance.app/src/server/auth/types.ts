@@ -1,3 +1,6 @@
+/* ---------------------------------------------------------------------- */
+/* Filepath: /src/server/auth/types.ts */
+/* ---------------------------------------------------------------------- */
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 interface AppSessionClaims {}   // ← canonical, single definition
@@ -6,8 +9,6 @@ interface AppSessionClaims {}   // ← canonical, single definition
 
 export type SessionClaims = AppSessionClaims
 export type SessionClaimsParser<T> = { parse(input: unknown): T }
-
-
 
 /* ---------------------------------------------------------------------- */
 
