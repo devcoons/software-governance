@@ -87,12 +87,23 @@ export function getStringClaim(claims: unknown, key: string): string | undefined
 
 /* ---------------------------------------------------------------------- */
 
-export function geIntClaim(claims: unknown, key: string): number | undefined {
-  if (typeof claims !== 'object' || claims === null) return undefined;
+export function getIntClaim(claims: unknown, key: string): number | undefined {
+  if (typeof claims !== 'object' || claims === null) 
+    return undefined;
   const v = (claims as Record<string, unknown>)[key];
+  console.log("INT_CLAIMS",v)
   return typeof v === 'number' ? v : undefined;
 }
 
+/* ---------------------------------------------------------------------- */
+
+export function getBoolClaim(claims: unknown, key: string): boolean | undefined {
+  if (typeof claims !== 'object' || claims === null) 
+    return undefined;
+  const v = (claims as Record<string, unknown>)[key];
+  console.log("BOOL_CLAIMS",v)
+  return typeof v === 'boolean' ? v : undefined;
+}
 /* ---------------------------------------------------------------------- */
 
 export function getStringArrayClaim(claims: unknown, key: string): string[] {

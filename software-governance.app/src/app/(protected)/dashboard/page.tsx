@@ -14,10 +14,12 @@ export const dynamic = 'force-dynamic';
 /* ---------------------------------------------------------------------- */
 
 export default async function Page() {
+    console.log("[ PG-/dashboard 0]")
 
-    const session = await getSessionOrBridge();    
+    const session = await getSessionOrBridge(); 
+    console.log("[ PG-/dashboard 1]")   
     const sessionView = toSessionView(session);
-
+    console.log("[ PG-/dashboard 2]")
     return (
     <Chrome session={sessionView}>
         <h1 className="mb-4 text-xl">Dashboard</h1>

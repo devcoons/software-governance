@@ -26,7 +26,7 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     const result = await verifyTotpPin(session.user_id, parsed.data.code)
     if (!result.ok) {
-        const status = result.error === 'invalid_code' ? 400 : 400
+        const status = result.error === 'invalid_code' ? 401 : 402
         return NextResponse.json({ ok: false, error: result.error }, { status })
     }
 

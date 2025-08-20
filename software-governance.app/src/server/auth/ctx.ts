@@ -13,6 +13,7 @@ import { getIpHint, getUaHash } from './ua-ip';
 import { randomId } from '@/libs/random-id';
 import { GetAndRefreshSessionResult, LogoutMode, LogoutResult, RefreshRecord, SessionClaims, SessionRecord } from './types';
 import { redirect } from 'next/navigation';
+import { getBoolClaim } from '@/app/_com/utils';
 
 /* ---------------------------------------------------------------------- */
 
@@ -107,7 +108,6 @@ export async function getAndRefreshCurrentSession(req: NextRequest) : Promise<Ge
         console.log('[AUTH-CTX-getAndRefreshCurrentSession()] - ', 'No RID -> unauthorized')
         return { ok : false, error: "unauthorized:norid" }
     }
-
 
     const now = Date.now()
     const absMs = Number(app.REFRESH_ABSOLUTE_TTL_SECONDS) * 1000
@@ -272,7 +272,7 @@ export function sanitizeNext(raw: string | null | undefined): string {
 }
 
 
-export async function getSessionOrBridge() : Promise<SessionRecord>{
+export async function getSessionOrBridge(skip_force_change? :boolean) : Promise<SessionRecord>{
     const sses = await getCurrentSession();
     
     if(!sses)
@@ -281,6 +281,19 @@ export async function getSessionOrBridge() : Promise<SessionRecord>{
         const currentUrl = h.get('x-url') ?? '/'
         return redirect(`/api/session-bridge?next=${encodeURIComponent(sanitizeNext(currentUrl))}&__bridged=1`)
     }
-
+    if(!skip_force_change)
+    {
+        if(sses)
+        {
+            if(sses.claims)
+            {
+                const forced_change = getBoolClaim(sses.claims,'force_password_change')
+                if(forced_change) 
+                {
+                    return redirect(`/password-change`)
+                }
+            }
+        }
+    }
     return sses
 }

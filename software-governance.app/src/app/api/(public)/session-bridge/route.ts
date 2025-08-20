@@ -25,37 +25,54 @@ export const GET = withCookieContext(async (req: NextRequest) => {
     const next = url.searchParams.get('next') || '/'
 
     const { shouldBlock, nextState } = evalBridgeGuard(req)
+    const hasGuard = !!req.cookies.get(BRIDGE_GUARD_COOKIE)?.value
+
     if (shouldBlock) {
         const to = new URL('/login', url.origin)
         to.searchParams.set('reason', 'bridge_loop')
         const res = NextResponse.redirect(to, 302)
         res.cookies.set(BRIDGE_GUARD_COOKIE, '', { ...baseOpts, maxAge: 0 })
+        res.cookies.set('sid', '', { ...baseOpts, httpOnly: true, maxAge: 0 })
         res.cookies.set('rid', '', { ...baseOpts, httpOnly: true, maxAge: 0 })
         res.headers.set('Cache-Control', 'no-store')
         return res
     }
 
     const rc = await getAndRefreshCurrentSession(req)
-
+    console.log(rc)
     if (!rc) {
-        queueCookie({
-            name: BRIDGE_GUARD_COOKIE,
-            value: encodeGuard(nextState),
-            options: { ...baseOpts, httpOnly: true, maxAge: Math.ceil(10_000/1000) }
-        })
+        if (!hasGuard) {
+            queueCookie({
+                name: BRIDGE_GUARD_COOKIE,
+                value: encodeGuard(nextState),
+                options: { ...baseOpts, httpOnly: true, maxAge: Math.ceil(10_000 / 1000) },
+            })
+        } else {
+            queueCookie({ name: BRIDGE_GUARD_COOKIE, value: '', options: { ...baseOpts, maxAge: 0 } })
+        }
+        queueCookie({ name: 'sid', value: '', options: { ...sidOpts, maxAge: 0 } })
+        queueCookie({ name: 'rid', value: '', options: { ...ridOpts, maxAge: 0 } })
         const to = new URL('/login', url.origin)
         to.searchParams.set('reason', "unknown_error")
+        console.log("Not rc")
         return NextResponse.redirect(to, 302)
     }
 
     if (!rc.ok) {
-        queueCookie({
-            name: BRIDGE_GUARD_COOKIE,
-            value: encodeGuard(nextState),
-            options: { ...baseOpts, httpOnly: true, maxAge: Math.ceil(10_000/1000) }
+        if (!hasGuard) {
+            queueCookie({
+                name: BRIDGE_GUARD_COOKIE,
+                value: encodeGuard(nextState),
+                options: { ...baseOpts, httpOnly: true, maxAge: Math.ceil(10_000 / 1000) },
         })
+        } else {
+            queueCookie({ name: BRIDGE_GUARD_COOKIE, value: '', options: { ...baseOpts, maxAge: 0 } })
+        }
+        queueCookie({ name: 'sid', value: '', options: { ...sidOpts, maxAge: 0 } })
+        queueCookie({ name: 'rid', value: '', options: { ...ridOpts, maxAge: 0 } })
         const to = new URL('/login', url.origin)
         to.searchParams.set('reason', rc.error)
+        console.log("Not rc.ok")
         return NextResponse.redirect(to, 302)
     }
 

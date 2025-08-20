@@ -37,7 +37,9 @@ export function withSession<T extends (req: NextRequest, ctx: unknown, session: 
 
       const { redisStore } = await import('@/server/auth/redis') // avoid cycles
       const fresh = await redisStore.getSession(rc.sid)
-      if (fresh) return handler(req, ctx, fresh)
+      
+      if (fresh) 
+        return handler(req, ctx, fresh)
       return NextResponse.json({ ok: false, error: 'session_unavailable_after_refresh' }, { status: 401 })
     }
 

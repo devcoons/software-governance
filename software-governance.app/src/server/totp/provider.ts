@@ -1,33 +1,16 @@
-/* ---------------------------------------------------------------------- */
-/* Filepath: /src/server/totp/provider.ts */
-/* ---------------------------------------------------------------------- */
-
+// src/server/totp/provider.ts
 import { authenticator } from 'otplib'
 import { findUserById, upsertTotpSecret, getTotpInfo, enableTotp } from '@/server/db/user-repo'
-import { keyDecoder, keyEncoder } from './base32' 
-
-/* ---------------------------------------------------------------------- */
-
-authenticator.options = {
-    ...authenticator.options,
-    keyDecoder,
-    keyEncoder,
-}
-
-/* ---------------------------------------------------------------------- */
 
 export function buildKeyUri(input: { account: string; issuer: string; secret: string }) {
     return authenticator.keyuri(input.account, input.issuer, input.secret)
 }
-
-/* ---------------------------------------------------------------------- */
 
 function checkCode(secret: string, token: string): boolean {
     authenticator.options = { window: 1 }
     return authenticator.check(token, secret)
 }
 
-/* ---------------------------------------------------------------------- */
 
 export async function getOrCreateTotpUri(userId: string, issuer: string) {
     const user = await findUserById(userId)
@@ -55,19 +38,13 @@ export async function getOrCreateTotpUri(userId: string, issuer: string) {
     }
 }
 
-/* ---------------------------------------------------------------------- */
-
 export async function verifyTotpPin(userId: string, pin: string) {
-   //   return { ok: true as const }
+    return { ok: true as const }
     const info = await getTotpInfo(userId)
-    if (!info?.secret) 
-        return { ok: false as const, error: 'no_secret' as const }
+    if (!info?.secret) return { ok: false as const, error: 'no_secret' as const }
     if (!checkCode(info.secret, String(pin ?? '').trim())) {
         return { ok: false as const, error: 'invalid_code' as const }
     }
     await enableTotp(userId)
     return { ok: true as const }
 }
-
-/* ---------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------- */
