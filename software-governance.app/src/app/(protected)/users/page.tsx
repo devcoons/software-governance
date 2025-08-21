@@ -7,7 +7,8 @@ import UsersTable from './_com/users-table';
 import { getSessionOrBridge } from '@/server/auth/ctx';
 import { redirect } from 'next/navigation';
 import { hasRoles, toSessionView } from '@/app/_com/utils';
-import { listAllUusersVisual } from '@/server/db/user-profile-repo';
+import { listAllUsersVisual } from '@/server/db/mysql.queries.get';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,7 +33,7 @@ export default async function UsersOverviewPage() {
             ? 
                 (<UsersTableAdmin users={await listAllUsers()}/>)
             :
-                (<UsersTable users={ await listAllUusersVisual()}/>)
+                (<UsersTable users={ await listAllUsersVisual()}/>)
             }
         </div>
       </div>

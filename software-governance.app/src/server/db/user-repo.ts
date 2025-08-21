@@ -44,31 +44,6 @@ export type DbUserLite = Omit<DbUser, 'password'>
 
 /* ---------------------------------------------------------------------- */
 
-export type DbUserVisual = Readonly<{
-  id: string
-  email: string
-  first_name: string | null
-  last_name: string | null
-  is_active: boolean
-  roles: string[]
-  permissions: string[]
-  last_login_at: string | null
-}>
-
-/* ---------------------------------------------------------------------- */
-
-export type DbUserVisualRow = Readonly<{
-  id: Buffer | Uint8Array | string | null
-  email: string
-  first_name: string | null
-  last_name: string | null
-  is_active: number
-  roles: string[]
-  permissions: string[]
-  last_login_at: Date | string
-}>
-/* ---------------------------------------------------------------------- */
-
 type DbUserRow = RowDataPacket & {
   id: Buffer | Uint8Array | string | null
   email: string

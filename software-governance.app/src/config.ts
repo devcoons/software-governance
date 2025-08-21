@@ -51,7 +51,7 @@ const config: ConfigFlat = Object.freeze({
   FORGOT_PASS_RATE_LIMIT: 10,
   DEBUGGING: true,
   URL_PUBLIC: ["/forgot-password","/login","/maintenance","/forgot-reset","/health","/login","/logout","/session-bridge"],
-  URL_PROTECTED: ["/approvals","/audit","/compliance","/dashboard","/logout","/me","/password-change","/software/new","/software","/software/pending","/users","/users/register","/me/force-update-password","/me/profile","/me/totp/enabled","/me/totp/setup","/me/totp/verify","/me/update-password","/users/change-role","/users/create","/users/delete","/users/profile","/users/reset-password"],
+  URL_PROTECTED: ["/approvals","/audit","/compliance","/dashboard","/logout","/me","/password-change","/software/new","/software","/software/pending","/users","/users/register","/me/force-update-password","/me/profile","/me/totp/enabled","/me/totp/setup","/me/totp/verify","/me/update-password","/users/change-role","/users/create","/users/delete","/users/profile","/users/reset-password","/users/toggle-status"],
   URL_ADMIN: [],
 })
 
