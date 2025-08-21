@@ -12,7 +12,7 @@ import { withSession } from '@/server/http/with-session'
 import { verifyTotpPin } from '@/server/totp/provider'
 import { redisStore } from '@/server/auth/redis'
 import { hasRoles } from '@/app/_com/utils'
-import { deleteUser } from '@/server/db/user-repo'
+import { deleteUser } from '@/server/db/mysql-queries.delete'
 
 /* ---------------------------------------------------------------------- */
 

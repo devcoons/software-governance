@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
-import { Trash2, KeyRound, User, CircleCheckBigIcon, Ban } from 'lucide-react';
 import { Role } from './user-role-select'
-import { DbUserLite, DbUserVisual } from '@/server/db/user-repo';
+import { UserVisual } from '@/server/db/mysql-types';
 
 
 type UserRow = {
@@ -21,7 +20,7 @@ const PAGE_SIZE = 7 as const;
 type SortKey = 'fname' | 'lname' | 'email' | 'role' | 'lastlogin' | 'accountsts';
 type SortDir = 'asc' | 'desc';
 
-function normalizeRole(u: DbUserVisual): Role {
+function normalizeRole(u: UserVisual): Role {
   return (u.roles?.[0] ?? 'user') as Role;
 }
 function fmtDate(x: UserRow['createdAt'] | null) {
@@ -37,7 +36,7 @@ function fmtDate(x: UserRow['createdAt'] | null) {
 export default function UsersTable({
   users,
 }: {
-  users: DbUserVisual[] ;
+  users: UserVisual[] ;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -127,7 +126,7 @@ const handleViewProfile = (userId: string, email: string) => {
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
-    const cmp = (a: DbUserVisual, b: DbUserVisual) => {
+    const cmp = (a: UserVisual, b: UserVisual) => {
       let av: string | number = '';
       let bv: string | number = '';
       switch (sortKey) {

@@ -6,12 +6,10 @@ import Chrome from '@/app/_com/chrome'
 import { getSessionOrBridge } from '@/server/auth/ctx'
 import ChangePasswordCard from './_com/change-password-card';
 import TotpSetupCard from './_com/totp-card';
-import { getUserProfileById } from '@/server/db/user-profile-repo';
 import ProfileCard from './_com/profile-card';
 import AccountCard from './_com/account-card';
 import { toSessionView } from '@/app/_com/utils';
-
-
+import { getUserProfileById } from '@/server/db/mysql-queries.insert';
 
 /* ---------------------------------------------------------------------- */
 

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
-import { getUserProfileById } from '@/server/db/user-profile-repo'
+import { getUserProfileById } from '@/server/db/mysql-queries.insert'
 
 /* ---------------------------------------------------------------------- */
 

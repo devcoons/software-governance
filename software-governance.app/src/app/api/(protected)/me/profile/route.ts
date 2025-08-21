@@ -7,10 +7,10 @@ export const dynamic = 'force-dynamic'
 
 /* ---------------------------------------------------------------------- */
 
-import { updateUserProfileById } from '@/server/db/user-profile-repo'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
 import { z } from 'zod'
+import { updateUserProfileById } from '@/server/db/mysql-queries.update'
 
 /* ---------------------------------------------------------------------- */
 

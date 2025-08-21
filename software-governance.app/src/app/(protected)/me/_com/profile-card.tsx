@@ -1,6 +1,6 @@
 'use client'
 
-import { DbUserProfile } from "@/server/db/user-profile-repo";
+import { UserProfile } from "@/server/db/mysql-types";
 import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -26,7 +26,7 @@ async function UpdateUserProfile(first_name: string, last_name:string, phone_num
 }
 
 
-export default function ProfileCard(profileDetails : DbUserProfile) {
+export default function ProfileCard(profileDetails : UserProfile) {
     const router = useRouter()
     const defaultProfile = profileDetails;
     const [firstname, setFirstname] = useState(defaultProfile.first_name)

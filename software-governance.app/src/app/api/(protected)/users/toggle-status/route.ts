@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
 import { verifyTotpPin } from '@/server/totp/provider'
 import { hasRoles } from '@/app/_com/utils'
-import { toggleStatus } from '@/server/db/user-repo'
+import { toggleStatus } from '@/server/db/mysql-queries.update'
 
 /* ---------------------------------------------------------------------- */
 

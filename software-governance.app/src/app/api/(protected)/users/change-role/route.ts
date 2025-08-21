@@ -10,9 +10,9 @@ import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
 import { verifyTotpPin } from '@/server/totp/provider'
-import { setUserRole } from '@/server/db/user-repo'
 import { redisStore } from '@/server/auth/redis'
 import { hasRoles } from '@/app/_com/utils'
+import { setUserRole } from '@/server/db/mysql-queries.update'
 
 /* ---------------------------------------------------------------------- */
 

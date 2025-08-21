@@ -69,4 +69,12 @@ function bufToUuid(b: unknown): string {
 }
 
 /* ---------------------------------------------------------------------- */
+
+export function getErrorCode(e: unknown): string | undefined {
+    if (typeof e !== 'object' || e === null) return undefined
+    if (!('code' in e)) return undefined
+    const c = (e as { code?: unknown }).code
+    return typeof c === 'string' ? c : undefined
+}
+
 /* ---------------------------------------------------------------------- */

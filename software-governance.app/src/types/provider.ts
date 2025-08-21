@@ -3,7 +3,7 @@
 /* ---------------------------------------------------------------------- */
 
 import { AppSessionClaims } from "@/server/auth/types"
-import { DbUser } from "@/server/db/user-repo"
+import { User } from "@/server/db/mysql-types"
 
 /* ---------------------------------------------------------------------- */
 
@@ -49,7 +49,7 @@ export type LoginResult =
   | { ok: false; error: string }
 /* ---------------------------------------------------------------------- */
 
-  export function claimsFromDbUser(u: DbUser): AppSessionClaims {
+  export function claimsFromDbUser(u: User): AppSessionClaims {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...rest } = u
     return { ...rest }

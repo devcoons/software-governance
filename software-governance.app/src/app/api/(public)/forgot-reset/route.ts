@@ -4,7 +4,8 @@
 
 import { hashPassword } from "@/libs/password";
 import { sanitizeNext } from "@/server/auth/ctx";
-import { getUserIdByUsername, updateUserPassword } from "@/server/db/user-repo";
+import { getUserIdByUsername } from "@/server/db/mysql-queries.select";
+import { updateUserPassword } from "@/server/db/mysql-queries.update";
 import { withCookieContext } from "@/server/http/cookie-finalizer";
 import { verifyTotpPin } from "@/server/totp/provider";
 import { init } from "next/dist/compiled/webpack/webpack";

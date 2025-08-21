@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 
 /* ---------------------------------------------------------------------- */
 
-import { getTotpInfo } from '@/server/db/user-repo'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
+import { getTotpInfo } from '@/server/db/mysql-queries.select'
 
 /* ---------------------------------------------------------------------- */
 

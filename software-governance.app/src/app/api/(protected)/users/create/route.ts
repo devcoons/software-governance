@@ -11,8 +11,7 @@ import { z } from 'zod'
 import { hasRoles } from '@/app/_com/utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { withSession } from '@/server/http/with-session'
-import { createUserWithTempPassword } from '@/server/db/user-repo'
-import { createAuditLog } from '@/server/db/audit-repo'
+import { createAuditLog, createUserWithTempPassword } from '@/server/db/mysql-queries.insert'
 
 /* ---------------------------------------------------------------------- */
 

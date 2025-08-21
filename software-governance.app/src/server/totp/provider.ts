@@ -1,6 +1,8 @@
 // src/server/totp/provider.ts
 import { authenticator } from 'otplib'
-import { findUserById, upsertTotpSecret, getTotpInfo, enableTotp } from '@/server/db/user-repo'
+import { findUserById, getTotpInfo } from '../db/mysql-queries.select';
+import { upsertTotpSecret } from '../db/mysql-queries.insert';
+import { enableTotp } from '../db/mysql-queries.update';
 
 export function buildKeyUri(input: { account: string; issuer: string; secret: string }) {
     return authenticator.keyuri(input.account, input.issuer, input.secret)

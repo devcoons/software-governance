@@ -8,12 +8,13 @@ import { claimsFromDbUser, LoginInput, LoginResult } from "@/types/provider";
 import { cookies, headers } from 'next/headers'
 import { redisStore } from './redis';
 import { verifyPassword, hashPassword } from '@/libs/password';
-import { findUserByLogin, burnTempPassword, updateLastLogin, findUserById } from '../db/user-repo';
 import { getIpHint, getUaHash } from './ua-ip';
 import { randomId } from '@/libs/random-id';
 import { GetAndRefreshSessionResult, LogoutMode, LogoutResult, RefreshRecord, SessionClaims, SessionRecord } from './types';
 import { redirect } from 'next/navigation';
 import { getBoolClaim } from '@/app/_com/utils';
+import { findUserById, findUserByLogin } from '../db/mysql-queries.select';
+import { burnTempPassword, updateLastLogin } from '../db/mysql-queries.update';
 
 /* ---------------------------------------------------------------------- */
 

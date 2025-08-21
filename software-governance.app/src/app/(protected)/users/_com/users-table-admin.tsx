@@ -18,7 +18,7 @@ import {
   currentAdminHasTOTP,
   toggleUserStatus,
 } from './actions'
-import { DbUserLite } from '@/server/db/user-repo';
+import { UserLite } from '@/server/db/mysql-types';
 
 
 type UserRow = {
@@ -34,7 +34,7 @@ const PAGE_SIZE = 7 as const;
 type SortKey = 'email' | 'role' | 'totp' | 'force' | 'created' | 'lastlogin' | 'accountsts';
 type SortDir = 'asc' | 'desc';
 
-function normalizeRole(u: DbUserLite): Role {
+function normalizeRole(u: UserLite): Role {
   return (u.roles?.[0] ?? 'user') as Role;
 }
 function fmtDate(x: UserRow['createdAt'] | null) {
@@ -112,7 +112,7 @@ function OneTimePasswordModal({
 export default function UsersTableAdmin({
   users
 }: {
-  users: DbUserLite[] ;
+  users: UserLite[] ;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -307,7 +307,7 @@ const handleViewProfile = (userId: string, email: string) => {
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
-    const cmp = (a: DbUserLite, b: DbUserLite) => {
+    const cmp = (a: UserLite, b: UserLite) => {
       let av: string | number = '';
       let bv: string | number = '';
       switch (sortKey) {

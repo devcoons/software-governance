@@ -1,7 +1,7 @@
 'use client'
 
+import { UserProfile } from '@/server/db/mysql-types'
 import { useEffect, useState } from 'react'
-import type { DbUserProfile } from '@/server/db/user-profile-repo'
 
 type Props = Readonly<{
   userId: string
@@ -9,7 +9,7 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-function normalizeProfile(input: unknown): DbUserProfile {
+function normalizeProfile(input: unknown): UserProfile {
   const obj = (typeof input === 'object' && input !== null ? input : {}) as Record<string, unknown>;
   const raw = (('data' in obj && typeof obj.data === 'object' && obj.data !== null) ? obj.data : obj) as Record<string, unknown>;
 
@@ -25,7 +25,7 @@ function normalizeProfile(input: unknown): DbUserProfile {
 export default function UserProfileView({ userId, email, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [profile, setProfile] = useState<DbUserProfile | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
     if (!userId) return

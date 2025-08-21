@@ -13,8 +13,9 @@ import { z } from 'zod'
 import app from '@/config'
 import { queueCookie } from '@/server/http/cookie-finalizer'
 import { verifyPassword, hashPassword } from '@/libs/password'
-import { findUserById, updateUserPassword } from '@/server/db/user-repo' // implement updateUserPassword(userId, newHash)
 import { redisStore } from '@/server/auth/redis'
+import { findUserById } from '@/server/db/mysql-queries.select'
+import { updateUserPassword } from '@/server/db/mysql-queries.update'
 
 /* ---------------------------------------------------------------------- */
 
