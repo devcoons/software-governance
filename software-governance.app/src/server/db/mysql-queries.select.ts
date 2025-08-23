@@ -4,8 +4,8 @@
 
 import { keyRule, normalizeRowsWithKeys, normalizeRowWithKeys } from "@devcoons/row-normalizer";
 import { query } from "./mysql-client";
-import { DbUser, DbUserProfile, DbUserVisual, User, UserLite, UserProfile, UserVisual } from "./mysql-types";
-import { rules } from "./mysql-utils";
+import { AuditLogVisual, DbAuditLogVisual, DbUser, DbUserProfile, DbUserVisual, User, UserLite, UserProfile, UserVisual } from "./mysql-types";
+import { rules, rulesAudit } from "./mysql-utils";
 import { RowDataPacket } from "mysql2";
 import { PoolConnection } from "mysql2/promise";
 
@@ -25,7 +25,44 @@ const USER_SELECT = `
   last_login_at, created_at, updated_at
 `
 
+function getValueByKey(meta: Record<string, unknown>, key: string) {
+    return Object.prototype.hasOwnProperty.call(meta, key) ? meta[key] : undefined;
+}
+
 /* ---------------------------------------------------------------------- */
+
+export async function listAllAuditLogs(): Promise<AuditLogVisual[]> {
+  const rows = await query<DbAuditLogVisual[]>(
+    `   SELECT l.id, l.user_id, u.username, l.type, l.meta, l.at
+        FROM audit_log AS l LEFT JOIN users AS u ON l.user_id = u.id;`
+  )
+  const dbVisuals = normalizeRowsWithKeys(rows as unknown as AuditLogVisual[], rulesAudit)
+
+  dbVisuals.forEach(element => {
+    if (element.type)
+    {
+        if(element.type.includes(":"))
+        {
+            element.group = element.type.split(":")[0]
+            element.type = element.type.replace(element.group+":","")
+        }
+    }
+    if(element.meta)
+    {
+        element.meta.forEach(([k, v]) => {
+            if (k=='status')
+            {
+                element.status = String(v)
+            }
+    });
+    }
+
+  });
+  console.log(dbVisuals)
+  return dbVisuals
+}
+
+
 
 export async function listAllUsersVisual(): Promise<UserVisual[]> {
   const rows = await query<DbUserVisual[]>(

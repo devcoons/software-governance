@@ -30,6 +30,28 @@ export type DbUserVisual =  RowDataPacket & Readonly<{
 
 /* ---------------------------------------------------------------------- */
 
+export type AuditLogVisual = {
+    id: number
+    user_id: string | null
+    username: string | null
+    group: string
+    type: string 
+    meta: [string, unknown][] | null
+    status: string 
+    at: string | null
+}
+
+export type DbAuditLogVisual =  RowDataPacket & Readonly<{
+    id: number
+    user_id: Buffer | Uint8Array | string | null
+    username: string | null
+    type: string | null
+    meta: string
+    at: Date | string
+}>
+
+/* ---------------------------------------------------------------------- */
+
 export type User = {
     id: string
     email: string

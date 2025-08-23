@@ -28,6 +28,14 @@ export const rules = [
     keyRule('permissions', (v) => v ? parseJsonArray(v) : []),
 ] 
 
+export const rulesAudit = [
+    keyRule('user_id', (v) => bufToUuid(v as any)),
+    keyRule('username', (v) => v ? String(v) : ''),
+    keyRule('type', (v) => v ? String(v) : ''),
+    keyRule('at', (v) => v ? String(v) : ''),
+    keyRule('meta', (v) => v ?  Object.entries(JSON.parse(String(v))) : null),
+] 
+
 /* ---------------------------------------------------------------------- */
 
 function parseJsonArray(input: unknown): string[] {
