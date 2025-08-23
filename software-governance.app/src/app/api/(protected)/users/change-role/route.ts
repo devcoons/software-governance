@@ -13,6 +13,7 @@ import { verifyTotpPin } from '@/server/totp/provider'
 import { redisStore } from '@/server/auth/redis'
 import { hasRoles } from '@/app/_com/utils'
 import { setUserRole } from '@/server/db/mysql-queries.update'
+import { createAuditLog } from '@/server/db/mysql-queries.insert'
 
 /* ---------------------------------------------------------------------- */
 
@@ -38,9 +39,14 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     // Verify caller's TOTP
     const totpOk = await verifyTotpPin(session.user_id, totp)
     if (!totpOk.ok) 
-        return NextResponse.json({ ok: false, error: 'totp_invalid' }, { status: 401 })
-
+    {
+        await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':false,"error":"wrong_otp"})
+        return NextResponse.json({ ok: false, error: 'totp_invalid' }, { status: 401 })      
+    }
     await setUserRole(userId, [role])
+
+
+    await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':true})
 
     await Promise.all([
         redisStore.revokeUserSessions(userId),

@@ -12,6 +12,7 @@ import { withSession } from '@/server/http/with-session'
 import { verifyTotpPin } from '@/server/totp/provider'
 import { hasRoles } from '@/app/_com/utils'
 import { toggleStatus } from '@/server/db/mysql-queries.update'
+import { createAuditLog } from '@/server/db/mysql-queries.insert'
 
 /* ---------------------------------------------------------------------- */
 
@@ -34,14 +35,23 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     const { userId, totp } = parsed.data
     const totpOk = await verifyTotpPin(session.user_id, totp)
     if (!totpOk.ok) 
+    {
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':false,'error':"wrong_totp"})
         return NextResponse.json({ ok: false, error: 'totp_invalid' }, { status: 401 })
-
+    }
 
     const nextActive = await toggleStatus(userId)
-    if (nextActive === null) 
-        return NextResponse.json({ ok: false, nextActive },{status:402})
 
-    return NextResponse.json({ ok: true, nextActive })
+    if (nextActive === null)
+    {
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':false})
+        return NextResponse.json({ ok: false, nextActive },{status:402})
+    }
+    else
+    {
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':nextActive,'status':true})
+        return NextResponse.json({ ok: true, nextActive })
+    }
 })
 
 /* ---------------------------------------------------------------------- */

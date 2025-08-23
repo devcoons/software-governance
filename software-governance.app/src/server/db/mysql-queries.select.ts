@@ -11,6 +11,13 @@ import { PoolConnection } from "mysql2/promise";
 
 /* ---------------------------------------------------------------------- */
 
+const USER_TABLE_ALL = `
+  id, email, username, is_active,
+  roles, permissions, totp_enabled, force_password_change,
+  temp_password_issued_at, temp_password_used_at,
+  last_login_at, created_at, updated_at
+`
+
 const USER_SELECT = `
   id, email, username, password, is_active,
   roles, permissions, totp_enabled, force_password_change,
@@ -59,6 +66,22 @@ export async function findUserByLogin(login: string): Promise<User | null> {
   )
   return rows[0] ? normalizeRowWithKeys(rows[0] as unknown as User, rules) : null
 }
+
+/* ---------------------------------------------------------------------- */
+
+export async function findUserByCredetials(username: string, password: string): Promise<User | null> {
+  const rows = await query<DbUser[]>(
+    `
+    SELECT ${USER_TABLE_ALL}
+    FROM users
+    WHERE username = ? AND password = ?
+    LIMIT 1
+    `,
+    [username, password]
+  )
+  return rows[0] ? normalizeRowWithKeys(rows[0] as unknown as User, rules) : null
+}
+
 /* ---------------------------------------------------------------------- */
 
 export async function findUserById(id: string): Promise<User | null> {
