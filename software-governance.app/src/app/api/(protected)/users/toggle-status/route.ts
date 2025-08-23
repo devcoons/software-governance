@@ -36,7 +36,7 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     const totpOk = await verifyTotpPin(session.user_id, totp)
     if (!totpOk.ok) 
     {
-        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':false,'error':"wrong_totp"})
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':'error:wrong_totp'})
         return NextResponse.json({ ok: false, error: 'totp_invalid' }, { status: 401 })
     }
 
@@ -44,12 +44,12 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     if (nextActive === null)
     {
-        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':false})
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':null,'status':'error:change_failed'})
         return NextResponse.json({ ok: false, nextActive },{status:402})
     }
     else
     {
-        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':nextActive,'status':true})
+        await createAuditLog(session.user_id,'user:toggle_status',{'user_id':userId,'new_status':nextActive,'status':'ok'})
         return NextResponse.json({ ok: true, nextActive })
     }
 })

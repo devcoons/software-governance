@@ -53,7 +53,7 @@ export const POST = withCookieContext(async (req: NextRequest) => {
     const rc = await loginService(req, { login, password, rememberMe })
 
     if (!rc.ok) {
-        await createAuditLog(null,'user:login',{'username':login,'status':false,'error':'invalid_credentials'})
+        await createAuditLog(null,'user:login',{'username':login,'status':'error:invalid_credentials'})
         return NextResponse.json({ ok: false, error: rc.error ?? 'invalid_credentials' }, { status: 401 })
     }
 
@@ -74,7 +74,7 @@ export const POST = withCookieContext(async (req: NextRequest) => {
         queueCookie({ name: ridCookieName, value: rc.rid, options: { ...ridOpts } })
     }
 
-    await createAuditLog(null,'user:login',{'username':login,'status':true})
+    await createAuditLog(null,'user:login',{'username':login,'status':'ok'})
     // Force no-store on auth responses (wrapper also sets it, this is belt & suspenders)
     if (wantsRedirect) {
         const res = NextResponse.redirect(new URL(nextPath || '/', url.origin), 303)

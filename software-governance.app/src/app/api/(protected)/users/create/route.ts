@@ -28,12 +28,15 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     }
 
     const parsed = Body.safeParse(await req.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 })
-
+    if (!parsed.success) 
+    {
+        await createAuditLog(session.user_id,'user:create',{'status':'error:invalid_payload'})
+        return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 })
+    }
     const { email, role } = parsed.data
     const { tempPassword } = await createUserWithTempPassword(email, [role])
     
-    await createAuditLog(session.user_id,'user:create',{'email':email,'role':role})
+    await createAuditLog(session.user_id,'user:create',{'email':email,'role':role,'status':'ok'})
 
     return NextResponse.json({ ok: true, password: tempPassword }, { headers: { 'Cache-Control': 'no-store' } })
 })

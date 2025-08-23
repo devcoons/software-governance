@@ -40,13 +40,13 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
     const totpOk = await verifyTotpPin(session.user_id, totp)
     if (!totpOk.ok) 
     {
-        await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':false,"error":"wrong_otp"})
+        await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':"error:wrong_otp"})
         return NextResponse.json({ ok: false, error: 'totp_invalid' }, { status: 401 })      
     }
     await setUserRole(userId, [role])
 
 
-    await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':true})
+    await createAuditLog(session.user_id,'user:change_role',{'user_id':userId,'role':role,'status':'ok'})
 
     await Promise.all([
         redisStore.revokeUserSessions(userId),
