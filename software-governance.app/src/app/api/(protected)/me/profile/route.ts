@@ -53,13 +53,7 @@ export const POST = withSession(async (req: NextRequest, _ctx, session) => {
 
     return NextResponse.json({
       ok: true,
-      profile: {
-        id: updated.user_id,
-        firstName: updated.first_name,
-        lastName: updated.last_name,
-        phoneNumber: updated.phone_number,
-        timezome: updated.timezone,
-      },
+      profile: updated,
     })
   } catch {
     return NextResponse.json({ ok: false, error: 'update_failed' }, { status: 500 })

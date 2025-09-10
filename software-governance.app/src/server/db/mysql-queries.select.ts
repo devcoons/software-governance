@@ -3,7 +3,7 @@
 /* ---------------------------------------------------------------------- */
 
 import { keyRule, normalizeRowsWithKeys, normalizeRowWithKeys } from "@devcoons/row-normalizer";
-import { query } from "./mysql-client";
+import { query, withTransaction } from "./mysql-client";
 import { AuditLogVisual, DbAuditLogVisual, DbUser, DbUserProfile, DbUserVisual, User, UserLite, UserProfile, UserVisual } from "./mysql-types";
 import { rules, rulesAudit } from "./mysql-utils";
 import { RowDataPacket } from "mysql2";
@@ -178,4 +178,32 @@ export async function readUserProfile(userId: string): Promise<UserProfile | nul
   `
   const rows = await query<DbUserProfile[]>(sql, [userId])
   return rows ? normalizeRowWithKeys(rows[0] as unknown as UserProfile, rules) : null
+}
+
+/* ---------------------------------------------------------------------- */
+export async function getUserProfileById(userId: string): Promise<UserProfile> {
+   
+   return await withTransaction<UserProfile>(async (conn) => {
+ 
+        const [row1] = await conn.query(
+        `SELECT 1 FROM user_profile WHERE user_id = UNHEX(REPLACE(?, '-', '')) LIMIT 1`,
+        [userId]
+        );
+        if ((row1 as any[]).length === 0) {
+        
+        await conn.query(
+            `INSERT INTO user_profile (user_id)
+            VALUES (UNHEX(REPLACE(?, '-', '')))
+            ON DUPLICATE KEY UPDATE user_id = user_profile.user_id`,
+            [userId]
+        );
+        }
+        const [row2] = await conn.query<DbUserProfile[]>(
+        `SELECT * FROM user_profile
+            WHERE user_id = UNHEX(REPLACE(?, '-', ''))`,
+        [userId]
+        );
+
+        return normalizeRowWithKeys(row2[0] as unknown as UserProfile, rules)
+    });
 }

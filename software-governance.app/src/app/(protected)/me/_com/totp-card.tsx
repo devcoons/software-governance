@@ -1,26 +1,107 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from 'react'
 
-export default function TotpSetupCard({ initialEnabled = false }: { initialEnabled?: boolean }) {
-  const [enabled, setEnabled] = useState(!!initialEnabled)
-  const [pending, setPending] = useState(false)
+type State = {
+  enabled: boolean
+  pending: boolean
 
-  const [showQR, setShowQR] = useState(false)
-  const [qrData, setQrData] = useState<string | null>(null)
-  const [qrLoading, setQrLoading] = useState(false)
-  const [qrHideTimer, setQrHideTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+  showQR: boolean
+  qrData: string | null
+  qrLoading: boolean
 
-  const [verificationCode, setVerificationCode] = useState('')
-  const [verifying, setVerifying] = useState(false)
-  const [status, setStatus] = useState<string | null>(null)
+  verificationCode: string
+  verifying: boolean
 
-  useEffect(() => () => { if (qrHideTimer) clearTimeout(qrHideTimer) }, [qrHideTimer])
+  status: string | null
+}
 
-  async function handleShowQR() {
-    setStatus(null)
-    setQrLoading(true)
+type Action =
+  | { type: 'setEnabledPending'; enabled: boolean; pending: boolean }
+  | { type: 'setStatus'; status: string | null }
+  | { type: 'setQrLoading'; qrLoading: boolean }
+  | { type: 'showQR'; show: boolean }
+  | { type: 'setQrData'; data: string | null }
+  | { type: 'setVerifying'; verifying: boolean }
+  | { type: 'setCode'; code: string }
+  | { type: 'onVerifiedSuccess' } // enabled=true, pending=false, hide QR, clear code + success msg
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'setEnabledPending':
+      return { ...state, enabled: action.enabled, pending: action.pending }
+    case 'setStatus':
+      return { ...state, status: action.status }
+    case 'setQrLoading':
+      return { ...state, qrLoading: action.qrLoading }
+    case 'showQR':
+      return { ...state, showQR: action.show }
+    case 'setQrData':
+      return { ...state, qrData: action.data }
+    case 'setVerifying':
+      return { ...state, verifying: action.verifying }
+    case 'setCode':
+      return { ...state, verificationCode: action.code }
+    case 'onVerifiedSuccess':
+      return {
+        ...state,
+        enabled: true,
+        pending: false,
+        showQR: false,
+        verificationCode: '',
+        status: '✅ TOTP verified and enabled.',
+      }
+    default:
+      return state
+  }
+}
+
+export default function TotpSetupCard({
+  initialEnabled = false,
+}: { initialEnabled?: boolean }) {
+  const [state, dispatch] = useReducer(reducer, {
+    enabled: !!initialEnabled,
+    pending: false,
+
+    showQR: false,
+    qrData: null,
+    qrLoading: false,
+
+    verificationCode: '',
+    verifying: false,
+
+    status: null,
+  })
+
+  // Keep frequently-read values in refs for stable handlers
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const codeRef = useRef<string>(state.verificationCode)
+
+  useEffect(() => {
+    codeRef.current = state.verificationCode
+  }, [state.verificationCode])
+
+  // Clear QR hide timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+    }
+  }, [])
+
+  const handleShowQR = useCallback(async () => {
+    dispatch({ type: 'setStatus', status: null })
+    dispatch({ type: 'setQrLoading', qrLoading: true })
+
     try {
       const res = await fetch('/api/me/totp/setup', {
         method: 'GET',
@@ -28,13 +109,14 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         credentials: 'same-origin',
       })
       type TotpSetupResponse = { ok: boolean; otpauthUrl?: string; enabled?: boolean; error?: string }
-        const data = (await res.json().catch(() => ({}))) as Partial<TotpSetupResponse>
+      const data = (await res.json().catch(() => ({}))) as Partial<TotpSetupResponse>
+
       if (!res.ok || !data?.otpauthUrl) {
-        setStatus(`❌ ${data?.error ?? 'Could not get TOTP QR.'}`)
+        dispatch({ type: 'setStatus', status: `❌ ${data?.error ?? 'Could not get TOTP QR.'}` })
         return
       }
 
-      // Build a data URL for nicer rendering if possible
+      // Try to render a data URL for the QR (cosmetic only)
       let dataUrl: string | null = null
       try {
         const { toDataURL } = await import('qrcode')
@@ -43,59 +125,66 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
         dataUrl = null
       }
 
-      setQrData(dataUrl || String(data.otpauthUrl))
-      setShowQR(true)
+      dispatch({ type: 'setQrData', data: dataUrl || String(data.otpauthUrl) })
+      dispatch({ type: 'showQR', show: true })
 
-      // Use server's enabled flag
+      // Enabled/pending status from server; pending when not enabled yet
       const isEnabled = !!data.enabled
-      setEnabled(isEnabled)
-      setPending(!isEnabled) // pending only when not enabled yet
+      dispatch({ type: 'setEnabledPending', enabled: isEnabled, pending: !isEnabled })
 
-      if (qrHideTimer) clearTimeout(qrHideTimer)
-      setQrHideTimer(setTimeout(() => {
-        setShowQR(false)
-        setStatus('ℹ️ QR code hidden for safety. Click again to show it.')
-      }, 60_000))
+      // Reset any existing timer then arm a new one
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = setTimeout(() => {
+        dispatch({ type: 'showQR', show: false })
+        dispatch({ type: 'setStatus', status: 'ℹ️ QR code hidden for safety. Click again to show it.' })
+        hideTimerRef.current = null
+      }, 60_000)
     } catch {
-      setStatus('❌ Could not get TOTP QR.')
+      dispatch({ type: 'setStatus', status: '❌ Could not get TOTP QR.' })
     } finally {
-      setQrLoading(false)
+      dispatch({ type: 'setQrLoading', qrLoading: false })
     }
-  }
+  }, [])
 
-  function handleHideQR() {
-    setShowQR(false)
-    if (qrHideTimer) clearTimeout(qrHideTimer)
-    setQrHideTimer(null)
-  }
+  const handleHideQR = useCallback(() => {
+    dispatch({ type: 'showQR', show: false })
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+  }, [])
 
-  async function handleVerify(e: React.FormEvent) {
+  const handleVerify = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    setStatus(null)
-    setVerifying(true)
+    dispatch({ type: 'setStatus', status: null })
+    dispatch({ type: 'setVerifying', verifying: true })
+
     try {
       const res = await fetch('/api/me/totp/verify', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: verificationCode }),
+        body: JSON.stringify({ code: codeRef.current }),
       })
       const result = await res.json().catch(() => ({}))
       if (res.ok && result?.ok) {
-        setEnabled(true)
-        setPending(false)
-        setShowQR(false)
-        setVerificationCode('')
-        setStatus('✅ TOTP verified and enabled.')
+        dispatch({ type: 'onVerifiedSuccess' })
       } else {
-        setStatus(`❌ ${result?.error ?? 'Verification failed'}`)
+        dispatch({ type: 'setStatus', status: `❌ ${result?.error ?? 'Verification failed'}` })
       }
     } catch {
-      setStatus('❌ Verification failed.')
+      dispatch({ type: 'setStatus', status: '❌ Verification failed.' })
     } finally {
-      setVerifying(false)
+      dispatch({ type: 'setVerifying', verifying: false })
     }
-  }
+  }, [])
+
+  const { enabled, pending, showQR, qrData, qrLoading, verificationCode, verifying, status } = state
+
+  const verifyDisabled = useMemo(
+    () => verifying || verificationCode.length !== 6,
+    [verifying, verificationCode.length]
+  )
 
   return (
     <div className="card bg-base-100 shadow-md border border-base-300 md:col-span-2">
@@ -118,6 +207,7 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
           >
             {qrLoading ? 'Loading…' : (enabled ? 'Show QR' : 'Show QR Code')}
           </button>
+
           {showQR && (
             <button onClick={handleHideQR} className="btn btn-outline btn-sm">
               Hide QR Code
@@ -129,12 +219,12 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
           <div className="mt-3 text-center">
             {qrData.startsWith('data:image') ? (
               <Image
-  src={qrData}
-  alt="TOTP QR"
-  width={200}
-  height={200}
-  className="inline-block border rounded p-2 bg-white"
-/>
+                src={qrData}
+                alt="TOTP QR"
+                width={200}
+                height={200}
+                className="inline-block border rounded p-2 bg-white"
+              />
             ) : (
               <div className="alert alert-info text-xs break-all">{qrData}</div>
             )}
@@ -153,14 +243,17 @@ export default function TotpSetupCard({ initialEnabled = false }: { initialEnabl
               maxLength={6}
               pattern="\d{6}"
               value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) =>
+                dispatch({ type: 'setCode', code: e.target.value.replace(/\D/g, '') })
+              }
               className="input input-bordered w-full"
               placeholder="123456"
               required
-              disabled={!pending && !enabled} // allow entry in pending; when enabled, typically not needed
+              // unchanged semantics: allow entry while pending; when enabled, typically not needed
+              disabled={!pending && !enabled}
             />
           </div>
-          <button className="btn btn-success" disabled={verifying || verificationCode.length !== 6}>
+          <button className="btn btn-success" disabled={verifyDisabled}>
             {verifying ? 'Verifying…' : 'Verify'}
           </button>
         </form>

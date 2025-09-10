@@ -4,10 +4,10 @@
 
 import { randomUUID } from "crypto";
 import { exec, withTransaction } from "./mysql-client";
-import { getErrorCode } from "./mysql-utils";
+import { getErrorCode, rules } from "./mysql-utils";
 import { generatePassword, hashPassword } from "@/libs/password";
-import { UserProfile } from "./mysql-types";
-import { readUserProfile } from "./mysql-queries.select";
+import { DbUserProfile, UserProfile } from "./mysql-types";
+import { normalizeRowWithKeys } from "@devcoons/row-normalizer";
 
 /* ---------------------------------------------------------------------- */
 
@@ -105,24 +105,32 @@ export async function upsertTotpSecret(userId: string, secretB32: string): Promi
 /* ---------------------------------------------------------------------- */
 
 export async function getUserProfileById(userId: string): Promise<UserProfile> {
-  return withTransaction(async (conn) => {
-    console.log("[USR-PRF-DB] Trying to retrieve data for: "+userId)
-    const existing = await readUserProfile(userId)
-    if (existing) 
-        return existing
-    await conn.execute(
-      `
-      INSERT INTO user_profile (user_id, first_name, last_name, phone_number, timezone)
-      VALUES (UNHEX(REPLACE(?, '-', '')), '', '', '', '')
-      `,
-      [userId]
-    )
-    const created = await readUserProfile(userId)
-    if (!created) {
-      throw new Error('failed_to_create_user_profile')
-    }
-    return created
-  })
+   
+   return await withTransaction<UserProfile>(async (conn) => {
+ 
+        const [row1] = await conn.query(
+        `SELECT 1 FROM user_profile WHERE user_id = UNHEX(REPLACE(?, '-', '')) LIMIT 1`,
+        [userId]
+        );
+        if ((row1 as any[]).length === 0) {
+        
+        await conn.query(
+            `INSERT INTO user_profile (user_id)
+            VALUES (UNHEX(REPLACE(?, '-', '')))
+            ON DUPLICATE KEY UPDATE user_id = user_profile.user_id`,
+            [userId]
+        );
+        }
+        await conn.commit();
+        const [row2] = await conn.query<DbUserProfile[]>(
+        `SELECT * FROM user_profile
+            WHERE user_id = UNHEX(REPLACE(?, '-', ''))`,
+        [userId]
+        );
+
+        await conn.commit();
+        return normalizeRowWithKeys(row2[0] as unknown as UserProfile, rules)
+    });
 }
 
 /* ---------------------------------------------------------------------- */

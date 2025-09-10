@@ -1,93 +1,282 @@
-'use client'
+'use client';
 
-import { UserProfile } from "@/server/db/mysql-types";
-import { redirect, useRouter } from "next/navigation";
-import { useState } from "react";
+import { UserProfile } from '@/server/db/mysql-types';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useReducer,
+  useState,
+  startTransition,
+  useTransition,
+} from 'react';
+import { flushSync } from 'react-dom';
 
+/* -------------------- Helpers -------------------- */
 
-async function UpdateUserProfile(first_name: string, last_name:string, phone_number:string, timezone:string): Promise<boolean>{
- try {
+function toSafeProfile(p?: Partial<UserProfile> | null): UserProfile {
+  return {
+    user_id: p?.user_id ?? '',
+    first_name: p?.first_name ?? '',
+    last_name: p?.last_name ?? '',
+    phone_number: p?.phone_number ?? '',
+    timezone: p?.timezone ?? '',
+  };
+}
+
+// Only compare the editable fields (user_id is immutable in this form)
+function shallowEqualProfile(a: UserProfile, b: UserProfile): boolean {
+  return (
+    a.first_name === b.first_name &&
+    a.last_name === b.last_name &&
+    a.phone_number === b.phone_number &&
+    a.timezone === b.timezone
+  );
+}
+
+/* -------------------- Types -------------------- */
+
+type ApiOk = { ok: true; profile: UserProfile };
+type ApiErr = { ok: false; error: string; issues?: unknown };
+type ApiResp = ApiOk | ApiErr;
+
+/* -------------------- API -------------------- */
+
+async function updateUserProfile(input: Omit<UserProfile, 'user_id'>): Promise<ApiResp> {
+  try {
     const res = await fetch('/api/me/profile', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'content-type': 'application/json' },
-      credentials: 'same-origin', 
-      cache: 'no-store',
       body: JSON.stringify({
-        first_name: first_name,
-        last_name: last_name,
-        phone_number: phone_number,
-        timezone,
+        first_name: input.first_name,
+        last_name: input.last_name,
+        phone_number: input.phone_number,
+        timezone: input.timezone,
       }),
-    })
-    return res.ok
+    });
+    const json = (await res.json()) as ApiResp;
+    return json;
   } catch {
-    redirect('/login?next=/profile')
+    return { ok: false, error: 'network_failure' };
   }
 }
 
+/* -------------------- Child: Buttons -------------------- */
 
-export default function ProfileCard(profileDetails : UserProfile) {
-    const router = useRouter()
-    const defaultProfile = profileDetails;
-    const [firstname, setFirstname] = useState(defaultProfile.first_name)
-    const [lastname, setLastname] = useState(defaultProfile.last_name)
-    const [phonenumber, setPhonenumber] = useState(defaultProfile.phone_number)
-    const [timezone, setTimezone] = useState(defaultProfile.timezone)
-    const changed = (firstname !== defaultProfile.first_name) || (lastname !== defaultProfile.last_name)
-                    || (phonenumber !== defaultProfile.phone_number) || (timezone !== defaultProfile.timezone);
-    const [saving, setSaving] = useState(false)
+type ActionsProps = {
+  canSave: boolean;
+  canReset: boolean;
+  saving: boolean;
+  isPending: boolean;
+  resetInProg: boolean;
+  onSave: () => void;   // stable
+  onReset: () => void;  // stable
+};
 
-    return (
-    <div className="card bg-base-100 shadow-md border border-base-300 ">
-        <div className="card-body">
-            <h2 className="card-title ">User Profile</h2>
-            <p className="text-sm opacity-70 mb-4">Below, you will find your personal details as currently recorded in our system. Please ensure they are kept up to date and accurate.</p>
-            <ul className="text-sm space-y-2 mb-4">
-                <li><span className="font-medium">First Name:</span> </li>
-                <li>           
-                    <label className="input w-full">
-                        <span className={`"indicator-item status ${firstname!==defaultProfile.first_name?'status-primary':''}`}></span>
-                        <input type="text" value={firstname} onChange={(e)=>{setFirstname(e.target.value)}} />
-                    </label>
-                </li>
-                <li><span className="font-medium">Last Name:</span> </li>
-                <li>           
-                    <label className="input w-full">
-                        <span className={`"indicator-item status ${lastname!==defaultProfile.last_name?'status-primary':''}`}></span>
-                        <input type="text" value={lastname} onChange={(e)=>{setLastname(e.target.value)}} />
-                    </label>
-                </li>
-                <li><span className="font-medium">Phone Number:</span> </li>
-                <li>           
-                    <label className="input w-full">
-                        <span className={`"indicator-item status ${phonenumber!==defaultProfile.phone_number?'status-primary':''}`}></span>
-                        <input type="text" value={phonenumber} onChange={(e)=>{setPhonenumber(e.target.value)}} />
-                    </label>
-                </li>
-                <li><span className="font-medium">Timezone:</span> </li>
-                <li>           
-                    <label className="input w-full">
-                        <span className={`"indicator-item status ${timezone!==defaultProfile.timezone?'status-primary':''}`}></span>
-                        <input type="text" value={timezone} onChange={(e)=>{setTimezone(e.target.value)}} />
-                    </label>
-                </li>
-            </ul>
-            <div className="inline-flex gap-2 ">
-                <button className="btn btn-primary w2/7" disabled={!changed} onClick={async ()=>{
-                    const ok = await UpdateUserProfile(firstname,lastname,phonenumber,timezone);
-                    setSaving(false)
-                if (ok) router.refresh()
-                    
-                }}>{saving ? 'Saving…' : 'Save'}</button>
-                <button className="btn btn-outline" disabled={!changed} onClick={()=>
-                {
-                    setFirstname(defaultProfile.first_name);
-                    setLastname(defaultProfile.last_name);
-                    setPhonenumber(defaultProfile.phone_number);
-                    setTimezone(defaultProfile.timezone);
-                }}>Reset</button>
-            </div>
-        </div>
+const ProfileActions = React.memo(function ProfileActions({
+  canSave,
+  canReset,
+  saving,
+  isPending,
+  resetInProg,
+  onSave,
+  onReset,
+}: ActionsProps) {
+  return (
+    <div className="mt-6 inline-flex gap-2">
+      <button
+        className="btn btn-primary w-28"
+        disabled={!canSave || saving || isPending}
+        onClick={onSave}
+      >
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+
+      <button
+        className="btn btn-outline"
+        disabled={!canReset || resetInProg || saving}
+        onClick={onReset}
+      >
+        {resetInProg ? 'Resetting…' : 'Reset'}
+      </button>
     </div>
-    );
+  );
+});
+
+/* -------------------- Reducer -------------------- */
+
+type Draft = Pick<UserProfile, 'first_name' | 'last_name' | 'phone_number' | 'timezone'> & {
+  user_id?: string; // ignored by changed compare but kept for shape compatibility
+};
+
+type DraftAction =
+  | { type: 'setField'; field: keyof Draft; value: string }
+  | { type: 'reset'; payload: UserProfile }
+  | { type: 'replace'; payload: UserProfile };
+
+function draftFromProfile(p: UserProfile): Draft {
+  return {
+    user_id: p.user_id,
+    first_name: p.first_name,
+    last_name: p.last_name,
+    phone_number: p.phone_number,
+    timezone: p.timezone,
+  };
+}
+
+function draftReducer(state: Draft, action: DraftAction): Draft {
+  switch (action.type) {
+    case 'setField':
+      if (state[action.field] === action.value) return state;
+      return { ...state, [action.field]: action.value };
+    case 'reset':
+    case 'replace':
+      return draftFromProfile(action.payload);
+    default:
+      return state;
+  }
+}
+
+/* -------------------- Component -------------------- */
+
+export default function ProfileCard(profileDetails: UserProfile) {
+  const initial = toSafeProfile(profileDetails);
+
+  // Server-truth defaults (updated after successful save)
+  const [defaultProfile, setDefaultProfile] = useState<UserProfile>(initial);
+
+  // Single draft reducer for all inputs
+  const [draft, dispatch] = useReducer(draftReducer, draftFromProfile(initial));
+
+  // Flags
+  const [saving, setSaving] = useState(false);
+  const [resetInProg, setResetInProg] = useState(false);
+  const [isPending, startLowPri] = useTransition();
+
+  // changed via shallowEqual over the 4 editable fields
+  const changed = useMemo(
+    () => !shallowEqualProfile(draft as UserProfile, defaultProfile),
+    [draft, defaultProfile]
+  );
+
+  // Keep latest draft in a ref so onSave can be stable
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  // ---------- stable onSave ----------
+  const onSave = useCallback(() => {
+    if (!changed || saving) return;
+
+    flushSync(() => {
+      setSaving(true);
+    });
+
+    (async () => {
+      const d = draftRef.current;
+      const resp = await updateUserProfile({
+        first_name: d.first_name,
+        last_name: d.last_name,
+        phone_number: d.phone_number,
+        timezone: d.timezone,
+      });
+
+      if (resp.ok) {
+        const p = toSafeProfile(resp.profile);
+        // Update both draft and defaults to what the server accepted
+        startLowPri(() => {
+          dispatch({ type: 'replace', payload: p });
+          setDefaultProfile(p);
+        });
+      } else {
+        console.error('save failed:', resp);
+      }
+
+      setSaving(false);
+    })();
+  }, [changed, saving]); // only UX-related deps
+
+  // ---------- stable onReset ----------
+  const onReset = useCallback(() => {
+    if (!changed || resetInProg) return;
+    setResetInProg(true);
+    startTransition(() => {
+      dispatch({ type: 'reset', payload: defaultProfile });
+    });
+    requestAnimationFrame(() => setResetInProg(false));
+  }, [changed, resetInProg, defaultProfile]);
+
+  return (
+    <div className="card bg-base-100 shadow-md border border-base-300">
+      <div className="card-body">
+        <h2 className="card-title">User Profile</h2>
+        <p className="text-sm opacity-70 mb-4">
+          Below, you will find your personal details as currently recorded in our system. Please ensure they are kept up to date and accurate.
+        </p>
+
+        <ul className="text-sm space-y-2 mb-4">
+          <li><span className="font-medium">First Name:</span></li>
+          <li>
+            <label className="input w-full">
+              <span className={`indicator-item status ${draft.first_name !== defaultProfile.first_name ? 'status-primary' : ''}`}></span>
+              <input
+                type="text"
+                value={draft.first_name}
+                onChange={(e) => dispatch({ type: 'setField', field: 'first_name', value: e.target.value })}
+              />
+            </label>
+          </li>
+
+          <li><span className="font-medium">Last Name:</span></li>
+          <li>
+            <label className="input w-full">
+              <span className={`indicator-item status ${draft.last_name !== defaultProfile.last_name ? 'status-primary' : ''}`}></span>
+              <input
+                type="text"
+                value={draft.last_name}
+                onChange={(e) => dispatch({ type: 'setField', field: 'last_name', value: e.target.value })}
+              />
+            </label>
+          </li>
+
+          <li><span className="font-medium">Phone Number:</span></li>
+          <li>
+            <label className="input w-full">
+              <span className={`indicator-item status ${draft.phone_number !== defaultProfile.phone_number ? 'status-primary' : ''}`}></span>
+              <input
+                type="text"
+                value={draft.phone_number}
+                onChange={(e) => dispatch({ type: 'setField', field: 'phone_number', value: e.target.value })}
+              />
+            </label>
+          </li>
+
+          <li><span className="font-medium">Timezone:</span></li>
+          <li>
+            <label className="input w-full">
+              <span className={`indicator-item status ${draft.timezone !== defaultProfile.timezone ? 'status-primary' : ''}`}></span>
+              <input
+                type="text"
+                value={draft.timezone}
+                onChange={(e) => dispatch({ type: 'setField', field: 'timezone', value: e.target.value })}
+              />
+            </label>
+          </li>
+        </ul>
+
+        <ProfileActions
+          canSave={changed}
+          canReset={changed}
+          saving={saving}
+          isPending={isPending}
+          resetInProg={resetInProg}
+          onSave={onSave}
+          onReset={onReset}
+        />
+      </div>
+    </div>
+  );
 }

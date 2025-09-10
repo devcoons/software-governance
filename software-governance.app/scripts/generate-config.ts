@@ -111,13 +111,18 @@ function resolveSecretPath(filePath: string | undefined | null, envDir: string):
 function readSecret(vars: string[], fileVars: string[], envDir: string, fallback = ''): string {
   for (const k of vars) {
     const v = process.env[k]
+  
     if (v && v.length > 0) return v
   }
+
   for (const fk of fileVars) {
     const f = process.env[fk]
+    
     const abs = resolveSecretPath(f, envDir)
+   
     if (!abs) continue
     try {
+        process.stdout.write(`file ${abs}\n`)
       const data = fs.readFileSync(abs, 'utf8').trim()
       if (data) return data
     } catch {}
@@ -146,9 +151,9 @@ function collectValues() {
   const APP_PORT = asInt('APP_PORT', process.env.APP_PORT ?? 3000, 3000, 0)
 
   const DB_HOST = process.env.DB_HOST || '127.0.0.1'
-  const DB_PORT = asInt('DB_PORT', process.env.DB_PORT ?? 13306, 13306, 1)
-  const DB_NAME = process.env.DB_NAME || 'sgov'
-  const DB_USER = process.env.DB_USER || 'sgov'
+  const DB_PORT = asInt('DB_PORT', process.env.DB_PORT ?? 13306, 3306, 1)
+  const DB_NAME = process.env.DB_NAME || 'rmas'
+  const DB_USER = process.env.DB_USER || 'rmas'
   const DB_PASSWORD = readSecret(
     ['DB_PASS', 'DB_PASSWORD', 'MYSQL_PASSWORD'],
     ['DB_PASSWORD_FILE', 'MYSQL_PASSWORD_FILE'],
@@ -157,10 +162,10 @@ function collectValues() {
   )
 
   const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1'
-  const REDIS_PORT = asInt('REDIS_PORT', process.env.REDIS_PORT ?? 16379, 16379, 1)
+  const REDIS_PORT = asInt('REDIS_PORT', process.env.REDIS_PORT ?? 16379, 6379, 1)
   const REDIS_USERNAME = process.env.REDIS_USERNAME || ''
   const REDIS_PASSWORD = readSecret(
-    ['REDIS_PASSWORD'],
+    ['REDIS_PASS','REDIS_PASSWORD'],
     ['REDIS_PASSWORD_FILE'],
     envDir,
     ''
@@ -192,7 +197,7 @@ function collectValues() {
   const LOGIN_WINDOW_SECONDS = asInt('LOGIN_WINDOW_SECONDS', process.env.LOGIN_WINDOW_SECONDS ?? 300, 300, 30)
   const LOGIN_MAX_ATTEMPTS = asInt('LOGIN_MAX_ATTEMPTS', process.env.LOGIN_MAX_ATTEMPTS ?? 10, 10, 1)
 
-  const TOTP_ISSUER = process.env.TOTP_ISSUER || 'Software Governance'
+  const TOTP_ISSUER = process.env.TOTP_ISSUER || 'GTX - Repository Analysis'
   const HEALTH_CACHE_MS = asInt('HEALTH_CACHE_MS', process.env.HEALTH_CACHE_MS ?? 2000, 2000, 500)
 
   const COOKIE_SECURE = asBool(process.env.COOKIE_SECURE, IS_PROD)
@@ -217,9 +222,7 @@ const ALLOW_PREFIXES = [
   const PROTECTED_PREFIXES = [
     '/dashboard',
     '/users',
-    '/registry',
-    '/software',
-    '/approvals',
+    '/analysis',
     '/audit',
     '/me',
     '/auth/logout',

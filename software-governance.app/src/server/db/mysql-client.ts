@@ -105,32 +105,4 @@ export async function pingDb(): Promise<{ ok: boolean; details?: string }> {
 }
 
 /* ---------------------------------------------------------------------- */
-
-export function bufToUuid(b: unknown): string {
-    if (!b) return ''
-    if (typeof b === 'string') return b
-
-    let buf: Buffer
-    if (Buffer.isBuffer(b)) {
-        buf = b
-    } else if (ArrayBuffer.isView(b)) {
-        const v = b as ArrayBufferView
-        buf = Buffer.from(v.buffer as ArrayBuffer, v.byteOffset, v.byteLength)
-    } else if (b instanceof ArrayBuffer) {
-        buf = Buffer.from(new Uint8Array(b))
-    } else {
-        return ''
-    }
-
-    const hex = buf.toString('hex')
-    return [
-        hex.slice(0, 8),
-        hex.slice(8, 12),
-        hex.slice(12, 16),
-        hex.slice(16, 20),
-        hex.slice(20),
-    ].join('-')
-}
-
-/* ---------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------- */
